@@ -6,6 +6,7 @@ import EcommerceScene from './scenes/EcommerceScene.js';
 import SceneSelectScene from './scenes/SceneSelectScene.js';
 import CultureScene from './scenes/CultureScene.js';
 import AgricultureScene from './scenes/AgricultureScene.js';
+import EndScene from './scenes/EndScene.js';
 
 const config = {
     type: Phaser.AUTO,
@@ -18,7 +19,8 @@ const config = {
         SceneSelectScene,
         EcommerceScene,
         CultureScene,
-        AgricultureScene
+        AgricultureScene,
+        EndScene
     ],
     physics: {
         default: 'arcade',
@@ -32,7 +34,6 @@ const config = {
     }
 };
 
-// 初始化游戏状态
 window.gameState = {
     character: null,
     medals: {
@@ -42,5 +43,4 @@ window.gameState = {
     }
 };
 
-// 创建游戏实例
-new Phaser.Game(config); 
+new Phaser.Game(config);
