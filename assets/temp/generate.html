@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Temp Images</title>
+</head>
+<body>
+    <canvas id="canvas" style="display:none"></canvas>
+    <script>
+        const images = [
+            { name: 'male', width: 200, height: 300, color: '#4A90E2' },
+            { name: 'female', width: 200, height: 300, color: '#E24A90' },
+            { name: 'button', width: 200, height: 60, color: '#50E3C2' },
+            { name: 'medal', width: 64, height: 64, color: '#F5A623' },
+            { name: 'background', width: 800, height: 600, color: '#F8F8F8' },
+            { name: 'package', width: 64, height: 64, color: '#D4B761' },
+            { name: 'conveyor', width: 800, height: 100, color: '#95A5A6' }
+        ];
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        images.forEach(img => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            
+            // 填充背景色
+            ctx.fillStyle = img.color;
+            ctx.fillRect(0, 0, img.width, img.height);
+
+            // 添加文字标识
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(img.name, img.width/2, img.height/2);
+
+            // 下载图片
+            const link = document.createElement('a');
+            link.download = img.name + '.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+    </script>
+</body>
+</html> 
