@@ -39,13 +39,13 @@ export default class EcommerceScene extends Phaser.Scene {
         // 创建包裹箱
         this.createPackageBox();
 
-        // 创建状态文本
-        this.boxText = this.add.text(650, 90, `完成箱数: ${this.boxesCompleted}/5`, {
+        // 创建状态文本（改回原位置）
+        this.boxText = this.add.text(650, 90, `箱数: ${this.boxesCompleted}/5`, {
             fontSize: '24px',
             fill: '#000'
         });
 
-        this.packageText = this.add.text(650, 130, `当前包裹: ${this.packageCount}/10`, {
+        this.packageText = this.add.text(650, 130, `包裹: ${this.packageCount}/10`, {
             fontSize: '24px',
             fill: '#000'
         });
@@ -55,7 +55,7 @@ export default class EcommerceScene extends Phaser.Scene {
             fill: '#000'
         });
 
-        // 创建包裹图片（可点击）
+        // 创建包裹图片（改回原位置）
         this.package = this.add.image(700, 450, 'package')
             .setScale(0.5)
             .setInteractive();
@@ -252,13 +252,13 @@ export default class EcommerceScene extends Phaser.Scene {
 
     addPackage() {
         this.packageCount++;
-        this.packageText.setText(`当前包裹: ${this.packageCount}/10`);
+        this.packageText.setText(`包裹: ${this.packageCount}/10`);
 
         if (this.packageCount >= 10) {
             // 一个箱子装满了
             this.packageCount = 0;
             this.boxesCompleted++;
-            this.boxText.setText(`完成箱数: ${this.boxesCompleted}/5`);
+            this.boxText.setText(`箱数: ${this.boxesCompleted}/5`);
 
             // 显示箱子完成的提示
             if (this.boxesCompleted < 5) {
@@ -297,13 +297,17 @@ export default class EcommerceScene extends Phaser.Scene {
 
         const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
         let reward = '';
+        let medalColor = '';
         
         if (elapsed <= 60) {
             reward = '金牌';
+            medalColor = '#FFD700';  // 金色
         } else if (elapsed <= 90) {
             reward = '银牌';
+            medalColor = '#C0C0C0';  // 银色
         } else {
             reward = '铜牌';
+            medalColor = '#CD7F32';  // 铜色
         }
 
         // 创建半透明背景
@@ -318,22 +322,61 @@ export default class EcommerceScene extends Phaser.Scene {
         dialogBox.lineStyle(4, 0x4A90E2);
         dialogBox.strokeRoundedRect(200, 100, 400, 400, 20);
 
-        const content = [
-            "恭喜完成！",
-            "",
-            `你用时 ${elapsed} 秒完成了 5 个箱子的打包`,
-            `总共打包了 50 个包裹`,
-            `获得${reward}奖励！`,
-            "",
-            "点击关闭",
-            "",
-            "可以点击左上角返回按钮",
-            "返回选择界面"
-        ].join('\n');
+        // 添加标题
+        const title = this.add.text(400, 150, '恭喜完成！', {
+            fontSize: '32px',
+            fontWeight: 'bold',
+            fill: '#4A90E2',
+            align: 'center'
+        }).setOrigin(0.5);
 
-        const text = this.add.text(400, 300, content, {
+        // 添加奖牌图标
+        const medal = this.add.image(400, 250, 'medal')
+            .setScale(1.5)
+            .setTint(parseInt(medalColor.replace('#', '0x')));
+
+        // 添加奖牌光效
+        const glow = this.add.graphics();
+        glow.lineStyle(20, parseInt(medalColor.replace('#', '0x')), 0.3);
+        glow.strokeCircle(400, 250, 50);
+
+        // 添加闪烁动画
+        this.tweens.add({
+            targets: glow,
+            alpha: 0,
+            duration: 1000,
+            yoyo: true,
+            repeat: -1
+        });
+
+        // 添加结果文本
+        const resultText = this.add.text(400, 350, [
+            `用时: ${elapsed} 秒`,
+            `完成箱数: 5`,
+            `总包裹数: 50`,
+            `获得 ${reward}！`,
+            '',
+            '点击任意位置关闭'
+        ].join('\n'), {
             fontSize: '24px',
             fill: '#333333',
+            align: 'center',
+            lineSpacing: 10
+        }).setOrigin(0.5);
+
+        // 添加评价文本
+        let comment = '';
+        if (elapsed <= 60) {
+            comment = '太棒了！你是快递打包专家！';
+        } else if (elapsed <= 90) {
+            comment = '非常好！继续加油！';
+        } else {
+            comment = '已经很不错了，还可以更快哦！';
+        }
+        
+        const commentText = this.add.text(400, 480, comment, {
+            fontSize: '20px',
+            fill: '#666666',
             align: 'center'
         }).setOrigin(0.5);
 
@@ -342,7 +385,20 @@ export default class EcommerceScene extends Phaser.Scene {
             window.gameState.medals.ecommerce = true;
             overlay.destroy();
             dialogBox.destroy();
-            text.destroy();
+            title.destroy();
+            medal.destroy();
+            glow.destroy();
+            resultText.destroy();
+            commentText.destroy();
+        });
+
+        // 添加奖牌获得动画
+        medal.setScale(0);
+        this.tweens.add({
+            targets: medal,
+            scale: 1.5,
+            duration: 1000,
+            ease: 'Bounce.Out'
         });
     }
 }
