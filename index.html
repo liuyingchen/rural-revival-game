@@ -15,10 +15,21 @@
             background-color: #f0f0f0;
         }
     </style>
+    <script>
+        // 添加错误处理
+        window.onerror = function(msg, url, line) {
+            console.error('Error:', msg, '\nURL:', url, '\nLine:', line);
+        };
+        console.log('页面开始加载...');
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
 </head>
 <body>
     <div id="game"></div>
+    <script>
+        // 检查 Phaser 是否正确加载
+        console.log('Phaser version:', Phaser ? Phaser.VERSION : 'Not loaded');
+    </script>
     <script type="module" src="./src/config.js"></script>
 </body>
 </html>

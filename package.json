@@ -5,7 +5,7 @@
   "main": "src/config.js",
   "scripts": {
     "clean": "rm -rf .cache dist",
-    "start:dev": "live-server --port=3000 --host=localhost --no-browser",
+    "start:dev": "live-server --port=3000 --host=localhost --no-browser --mount=/src:./src",
     "build": "parcel build index.html"
   },
   "dependencies": {
