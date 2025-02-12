@@ -1,9 +1,9 @@
 export default class EcommerceScene extends Phaser.Scene {
     constructor() {
         super({ key: 'EcommerceScene' });
-        this.packageCount = 0;
-        this.boxesCompleted = 0;
-        this.timeLeft = 60;
+        this.packageCount = 0;    // 当前箱子的包裹数
+        this.boxesCompleted = 0;  // 完成的箱子数
+        this.gameStartTime = 0;   // 游戏开始时间
         this.isPlaying = false;
     }
 
@@ -11,24 +11,36 @@ export default class EcommerceScene extends Phaser.Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
+        // 添加背景
         this.add.image(width/2, height/2, 'ecommerce-bg')
             .setDisplaySize(width, height);
 
+        // 添加标题
         this.add.text(width/2, 50, '农村电商', {
             fontSize: '32px',
             fill: '#000000'
         }).setOrigin(0.5);
 
-        this.createConveyor();
-        this.packages = this.add.group();
-        this.createPackageBox();
+        // 添加返回按钮
+        const backButton = this.add.container(100, 50);
+        const backBg = this.add.image(0, 0, 'button').setDisplaySize(120, 40);
+        const backText = this.add.text(0, 0, '返回', {
+            fontSize: '20px',
+            fill: '#ffffff'
+        }).setOrigin(0.5);
+        backButton.add([backBg, backText]);
+        backButton.setSize(120, 40);
+        backButton.setInteractive();
 
-        this.timerText = this.add.text(650, 50, `时间: ${this.timeLeft}`, {
-            fontSize: '24px',
-            fill: '#000'
+        backButton.on('pointerdown', () => {
+            this.scene.start('SceneSelectScene');
         });
 
-        this.boxText = this.add.text(650, 90, `完成箱数: ${this.boxesCompleted}`, {
+        // 创建包裹箱
+        this.createPackageBox();
+
+        // 创建状态文本
+        this.boxText = this.add.text(650, 90, `完成箱数: ${this.boxesCompleted}/5`, {
             fontSize: '24px',
             fill: '#000'
         });
@@ -36,6 +48,22 @@ export default class EcommerceScene extends Phaser.Scene {
         this.packageText = this.add.text(650, 130, `当前包裹: ${this.packageCount}/10`, {
             fontSize: '24px',
             fill: '#000'
+        });
+
+        this.timeText = this.add.text(650, 50, '用时: 0秒', {
+            fontSize: '24px',
+            fill: '#000'
+        });
+
+        // 创建包裹图片（可点击）
+        this.package = this.add.image(700, 450, 'package')
+            .setScale(0.5)
+            .setInteractive();
+
+        this.package.on('pointerdown', () => {
+            if (this.isPlaying) {
+                this.addPackage();
+            }
         });
 
         this.showStartPrompt();
@@ -190,117 +218,131 @@ export default class EcommerceScene extends Phaser.Scene {
         });
     }
 
-    startGame() {
-        this.isPlaying = true;
-
-        this.timer = this.time.addEvent({
-            delay: 1000,
-            callback: this.updateTimer,
-            callbackScope: this,
-            loop: true
-        });
-
-        this.packageGenerator = this.time.addEvent({
-            delay: 2000,
-            callback: this.generatePackage,
-            callbackScope: this,
-            loop: true
-        });
-    }
-
-    createConveyor() {
-        this.conveyor = this.add.image(400, 500, 'conveyor')
-            .setDisplaySize(800, 100);
-    }
-
     createPackageBox() {
         const boxZone = this.add.zone(100, 400, 150, 150)
             .setRectangleDropZone(150, 150);
 
         const graphics = this.add.graphics();
         graphics.lineStyle(2, 0x000000);
-        graphics.strokeRect(boxZone.x - boxZone.width/2, boxZone.y - boxZone.height/2, 
-            boxZone.width, boxZone.height);
+        graphics.strokeRect(
+            boxZone.x - boxZone.width/2, 
+            boxZone.y - boxZone.height/2, 
+            boxZone.width, 
+            boxZone.height
+        );
     }
 
-    generatePackage() {
-        if (!this.isPlaying) return;
-
-        const packageItem = this.add.image(800, 450, 'package')
-            .setScale(0.5)
-            .setInteractive();
-
-        this.packages.add(packageItem);
-
-        this.input.setDraggable(packageItem);
-
-        this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
-            gameObject.x = dragX;
-            gameObject.y = dragY;
-        });
-
-        this.input.on('drop', (pointer, gameObject, dropZone) => {
-            gameObject.destroy();
-            this.packageCount++;
-            this.packageText.setText(`当前包裹: ${this.packageCount}/10`);
-
-            if (this.packageCount >= 10) {
-                this.packageCount = 0;
-                this.boxesCompleted++;
-                this.boxText.setText(`完成箱数: ${this.boxesCompleted}`);
-            }
+    startGame() {
+        this.isPlaying = true;
+        this.gameStartTime = Date.now();
+        
+        // 开始计时
+        this.timer = this.time.addEvent({
+            delay: 100,
+            callback: this.updateTimer,
+            callbackScope: this,
+            loop: true
         });
     }
 
     updateTimer() {
-        this.timeLeft--;
-        this.timerText.setText(`时间: ${this.timeLeft}`);
+        const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
+        this.timeText.setText(`用时: ${elapsed}秒`);
+    }
 
-        if (this.timeLeft <= 0) {
-            this.endGame();
+    addPackage() {
+        this.packageCount++;
+        this.packageText.setText(`当前包裹: ${this.packageCount}/10`);
+
+        if (this.packageCount >= 10) {
+            // 一个箱子装满了
+            this.packageCount = 0;
+            this.boxesCompleted++;
+            this.boxText.setText(`完成箱数: ${this.boxesCompleted}/5`);
+
+            // 显示箱子完成的提示
+            if (this.boxesCompleted < 5) {
+                this.showBoxCompletedMessage();
+            } else {
+                // 所有箱子都完成了
+                this.endGame();
+            }
         }
     }
 
-    endGame() {
-        this.isPlaying = false;
-        this.packageGenerator.destroy();
-        this.timer.destroy();
-        this.packages.clear(true, true);
-        this.showResultDialog();
-    }
+    showBoxCompletedMessage() {
+        // 创建提示背景
+        const messageBox = this.add.graphics();
+        messageBox.fillStyle(0x000000, 0.7);
+        messageBox.fillRect(200, 250, 400, 100);
 
-    showResultDialog() {
-        let reward = '';
-        if (this.boxesCompleted >= 10) {
-            reward = '金牌';
-        } else if (this.boxesCompleted >= 5) {
-            reward = '银牌';
-        } else {
-            reward = '铜牌';
-        }
-
-        const content = [
-            "游戏结束！",
-            "",
-            `你总共完成了 ${this.boxesCompleted} 个箱子的打包`,
-            `获得${reward}奖励！`,
-            "",
-            "点击继续进入下一个场景"
-        ].join('\n');
-
-        const graphics = this.add.graphics();
-        graphics.fillStyle(0x000000, 0.7);
-        graphics.fillRect(100, 100, 600, 400);
-
-        const text = this.add.text(400, 300, content, {
+        // 创建提示文本
+        const message = this.add.text(400, 300, 
+            `第 ${this.boxesCompleted} 个箱子打包完成！\n继续打包下一个箱子...`, {
             fontSize: '24px',
             fill: '#ffffff',
             align: 'center'
         }).setOrigin(0.5);
 
+        // 2秒后自动消失
+        this.time.delayedCall(2000, () => {
+            messageBox.destroy();
+            message.destroy();
+        });
+    }
+
+    endGame() {
+        this.isPlaying = false;
+        this.timer.destroy();
+
+        const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
+        let reward = '';
+        
+        if (elapsed <= 60) {
+            reward = '金牌';
+        } else if (elapsed <= 90) {
+            reward = '银牌';
+        } else {
+            reward = '铜牌';
+        }
+
+        // 创建半透明背景
+        const overlay = this.add.graphics();
+        overlay.fillStyle(0x000000, 0.7);
+        overlay.fillRect(0, 0, 800, 600);
+
+        // 创建结果对话框
+        const dialogBox = this.add.graphics();
+        dialogBox.fillStyle(0xFFFFFF, 1);
+        dialogBox.fillRoundedRect(200, 100, 400, 400, 20);
+        dialogBox.lineStyle(4, 0x4A90E2);
+        dialogBox.strokeRoundedRect(200, 100, 400, 400, 20);
+
+        const content = [
+            "恭喜完成！",
+            "",
+            `你用时 ${elapsed} 秒完成了 5 个箱子的打包`,
+            `总共打包了 50 个包裹`,
+            `获得${reward}奖励！`,
+            "",
+            "点击关闭",
+            "",
+            "可以点击左上角返回按钮",
+            "返回选择界面"
+        ].join('\n');
+
+        const text = this.add.text(400, 300, content, {
+            fontSize: '24px',
+            fill: '#333333',
+            align: 'center'
+        }).setOrigin(0.5);
+
+        // 点击关闭结果对话框，但保持在当前场景
         this.input.once('pointerdown', () => {
             window.gameState.medals.ecommerce = true;
-            this.scene.start('CultureScene');
+            overlay.destroy();
+            dialogBox.destroy();
+            text.destroy();
         });
     }
 }
