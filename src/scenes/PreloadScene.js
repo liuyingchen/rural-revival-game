@@ -33,9 +33,9 @@ export default class PreloadScene extends Phaser.Scene {
         this.load.image('ecommerce-bg', 'assets/images/scenes/ecommerce/background.png');
         this.load.image('package', 'assets/images/scenes/ecommerce/package.png');
 
-        // 加载两种状态的包裹图片
-        this.load.image('package-open', 'assets/images/scenes/ecommerce/package-open.png');
-        this.load.image('package-closed', 'assets/images/scenes/ecommerce/package-closed.png');
+        // 加载两种状态的箱子图片
+        this.load.image('box-open', 'assets/images/scenes/ecommerce/box-open.png');    // 打开状态的箱子
+        this.load.image('box-closed', 'assets/images/scenes/ecommerce/box-closed.png'); // 封闭状态的箱子
         this.load.image('conveyor', 'assets/images/scenes/ecommerce/conveyor.png');
 
         // 加载角色精灵图

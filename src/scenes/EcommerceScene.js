@@ -1,11 +1,11 @@
 export default class EcommerceScene extends Phaser.Scene {
     constructor() {
         super({ key: 'EcommerceScene' });
-        this.packageCount = 0;    // 当前箱子的包裹数
-        this.boxesCompleted = 0;  // 完成的箱子数
-        this.gameStartTime = 0;   // 游戏开始时间
+        this.boxCount = 0;        // 已完成的箱子数
+        this.targetBoxCount = 20; // 目标箱子数改为20
+        this.gameStartTime = 0;   
         this.isPlaying = false;
-        this.packages = [];  // 存储所有包裹
+        this.isPackingAnimating = false;  // 添加角色动画状态标记
     }
 
     create() {
@@ -31,19 +31,27 @@ export default class EcommerceScene extends Phaser.Scene {
             characterType
         ).setScale(0.8);
 
-        // 添加打开状态的包裹（初始包裹）
-        this.openPackage = this.add.image(
-            this.conveyor.x - this.conveyor.width * 0.3,  // 调整包裹位置，放在传送带左侧
-            this.conveyor.y - 20,  // 稍微抬高一点
-            'package-open'
-        ).setScale(0.5)
-            .setInteractive();
+        // 添加打开状态的箱子（初始状态）
+        this.openBox = this.add.image(
+            this.conveyor.x - this.conveyor.width * 0.22,  // 保持位置不变
+            this.conveyor.y + 45,  // 保持位置不变
+            'box-open'
+        ).setScale(0.4)
+            .setInteractive()
+            .on('pointerover', () => {
+                // 鼠标悬停效果
+                this.openBox.setTint(0x88ff88);  // 添加浅绿色
+            })
+            .on('pointerout', () => {
+                // 鼠标移出效果
+                this.openBox.clearTint();
+            });
 
         // 点击事件处理
-        this.openPackage.on('pointerdown', () => {
-            if (this.isPlaying) {
-                this.addNewPackage();
-                this.playPackageAnimation();
+        this.openBox.on('pointerdown', () => {
+            if (this.isPlaying && !this.isPackingAnimating) {  // 添加动画状态检查
+                this.sealAndMoveBox();
+                this.playPackingAnimation();
             }
         });
 
@@ -58,14 +66,14 @@ export default class EcommerceScene extends Phaser.Scene {
             padding: { x: 10, y: 5 }
         });
 
-        this.boxText = this.add.text(width - 150, 90, `箱数: ${this.boxesCompleted}/5`, {
+        this.boxText = this.add.text(width - 150, 90, `箱数: ${this.boxCount}/${this.targetBoxCount}`, {
             fontSize: '24px',
             fill: '#000',
             backgroundColor: '#ffffff80',
             padding: { x: 10, y: 5 }
         });
 
-        this.packageText = this.add.text(width - 150, 130, `包裹: ${this.packageCount}/10`, {
+        this.packageText = this.add.text(width - 150, 130, `包裹: 0/10`, {
             fontSize: '24px',
             fill: '#000',
             backgroundColor: '#ffffff80',
@@ -165,7 +173,7 @@ export default class EcommerceScene extends Phaser.Scene {
             '把新鲜的农产品送到城里的消费者手中。',
             '记住：速度要快，包装要好！',
             '一个箱子可以装10个包裹，',
-            '我们今天的任务是完成5个箱子。',
+            '我们今天的任务是完成20个箱子。',
             '',
             '准备好了吗？点击任意位置开始游戏！'
         ];
@@ -307,36 +315,90 @@ export default class EcommerceScene extends Phaser.Scene {
         this.timeText.setText(`用时: ${elapsed}秒`);
     }
 
-    addNewPackage() {
-        const newPackage = this.add.image(
-            this.openPackage.x,  // 从打开包裹的位置开始
-            this.openPackage.y,
-            'package-closed'  // 需要新的关闭状态包裹图片
-        ).setScale(0.5);
+    // 封箱并移动的方法
+    sealAndMoveBox() {
+        // 临时隐藏打开的箱子
+        this.openBox.setVisible(false);
 
-        // 添加移动动画
+        // 创建一个封闭状态的箱子，初始位置与打开箱子相同
+        const sealedBox = this.add.image(
+            this.openBox.x,
+            this.openBox.y,
+            'box-closed'
+        ).setScale(0.4);
+
+        // 添加缩放动画效果
         this.tweens.add({
-            targets: newPackage,
-            x: this.conveyor.x + this.conveyor.width * 0.4,  // 移动到传送带右侧
-            duration: 1500,
-            ease: 'Linear',
+            targets: sealedBox,
+            scaleX: 0.45,
+            scaleY: 0.35,
+            duration: 150,
+            yoyo: true,
+            ease: 'Quad.easeOut',
             onComplete: () => {
-                // 完成时销毁包裹
-                newPackage.destroy();
-                // 更新计数
-                this.packageCount++;
-                this.packageText.setText(`包裹: ${this.packageCount}/10`);
+                // 移动到传送带起点时，恢复显示打开的箱子
+                this.openBox.setVisible(true);
+                
+                // 移动到传送带起点，添加弹性效果
+                this.tweens.add({
+                    targets: sealedBox,
+                    x: this.conveyor.x - this.conveyor.width * 0.18,
+                    y: this.conveyor.y - 100,
+                    duration: 300,
+                    ease: 'Back.easeOut',
+                    onComplete: () => {
+                        // 沿传送带平滑移动
+                        this.tweens.add({
+                            targets: sealedBox,
+                            x: this.conveyor.x + this.conveyor.width * 0.5,
+                            duration: 4000,  // 加快移动速度
+                            ease: 'Sine.easeInOut',
+                            onComplete: () => {
+                                // 完成时的消失效果
+                                this.tweens.add({
+                                    targets: sealedBox,
+                                    alpha: 0,
+                                    y: sealedBox.y - 30,
+                                    duration: 200,
+                                    ease: 'Quad.easeIn',
+                                    onComplete: () => {
+                                        sealedBox.destroy();
+                                        this.boxCount++;
+                                        this.boxText.setText(`箱数: ${this.boxCount}/${this.targetBoxCount}`);
 
-                if (this.packageCount >= 10) {
-                    this.boxesCompleted++;
-                    this.boxText.setText(`箱数: ${this.boxesCompleted}/5`);
-                    this.packageCount = 0;
-                    this.packageText.setText(`包裹: ${this.packageCount}/10`);
-
-                    if (this.boxesCompleted >= 5) {
-                        this.endGame();
+                                        if (this.boxCount >= this.targetBoxCount) {
+                                            this.endGame();
+                                        }
+                                    }
+                                });
+                            }
+                        });
                     }
-                }
+                });
+            }
+        });
+    }
+
+    // 打包动画
+    playPackingAnimation() {
+        // 如果正在播放动画，直接返回
+        if (this.isPackingAnimating) {
+            return;
+        }
+        
+        this.isPackingAnimating = true;
+        const originalScale = this.player.scaleX;
+        
+        this.tweens.add({
+            targets: this.player,
+            scaleX: originalScale * 1.2,
+            scaleY: originalScale * 0.8,
+            duration: 200,
+            yoyo: true,
+            ease: 'Power1',
+            onComplete: () => {
+                this.player.setScale(originalScale);
+                this.isPackingAnimating = false;  // 动画完成后重置状态
             }
         });
     }
@@ -349,7 +411,7 @@ export default class EcommerceScene extends Phaser.Scene {
 
         // 创建提示文本
         const message = this.add.text(400, 300, 
-            `第 ${this.boxesCompleted} 个箱子打包完成！\n继续打包下一个箱子...`, {
+            `第 ${this.boxCount} 个箱子打包完成！\n继续打包下一个箱子...`, {
             fontSize: '24px',
             fill: '#ffffff',
             align: 'center'
@@ -364,121 +426,53 @@ export default class EcommerceScene extends Phaser.Scene {
 
     endGame() {
         this.isPlaying = false;
-        this.timer.destroy();
+        if (this.timer) {
+            this.timer.destroy();
+        }
 
         const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
-        let reward = '';
-        let medalColor = '';
-        
-        if (elapsed <= 60) {
-            reward = '金牌';
-            medalColor = '#FFD700';  // 金色
-        } else if (elapsed <= 90) {
-            reward = '银牌';
-            medalColor = '#C0C0C0';  // 银色
+        let medalType = '';
+
+        // 根据完成时间判断奖牌
+        if (elapsed <= 30) {
+            medalType = '金牌';
+            window.gameState.medals.ecommerce = 'gold';
+        } else if (elapsed <= 40) {
+            medalType = '银牌';
+            window.gameState.medals.ecommerce = 'silver';
         } else {
-            reward = '铜牌';
-            medalColor = '#CD7F32';  // 铜色
+            medalType = '铜牌';
+            window.gameState.medals.ecommerce = 'bronze';
         }
 
-        // 创建半透明背景
+        // 显示结束信息
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // 创建结束画面背景
         const overlay = this.add.graphics();
         overlay.fillStyle(0x000000, 0.7);
-        overlay.fillRect(0, 0, 800, 600);
+        overlay.fillRect(0, 0, width, height);
 
-        // 创建结果对话框
-        const dialogBox = this.add.graphics();
-        dialogBox.fillStyle(0xFFFFFF, 1);
-        dialogBox.fillRoundedRect(200, 100, 400, 400, 20);
-        dialogBox.lineStyle(4, 0x4A90E2);
-        dialogBox.strokeRoundedRect(200, 100, 400, 400, 20);
-
-        // 添加奖牌图标
-        const medal = this.add.image(400, 250, 'medal')
-            .setScale(1.5)
-            .setTint(parseInt(medalColor.replace('#', '0x')));
-
-        // 添加奖牌光效
-        const glow = this.add.graphics();
-        glow.lineStyle(20, parseInt(medalColor.replace('#', '0x')), 0.3);
-        glow.strokeCircle(400, 250, 50);
-
-        // 添加闪烁动画
-        this.tweens.add({
-            targets: glow,
-            alpha: 0,
-            duration: 1000,
-            yoyo: true,
-            repeat: -1
-        });
-
-        // 添加结果文本
-        const resultText = this.add.text(400, 350, [
-            `用时: ${elapsed} 秒`,
-            `完成箱数: 5`,
-            `总包裹数: 50`,
-            `获得 ${reward}！`,
-            '',
-            '点击任意位置关闭'
-        ].join('\n'), {
-            fontSize: '24px',
-            fill: '#333333',
-            align: 'center',
-            lineSpacing: 10
-        }).setOrigin(0.5);
-
-        // 添加评价文本
-        let comment = '';
-        if (elapsed <= 60) {
-            comment = '太棒了！你是快递打包专家！';
-        } else if (elapsed <= 90) {
-            comment = '非常好！继续加油！';
-        } else {
-            comment = '已经很不错了，还可以更快哦！';
-        }
-        
-        const commentText = this.add.text(400, 480, comment, {
-            fontSize: '20px',
-            fill: '#666666',
+        // 显示完成信息
+        const message = this.add.text(width/2, height/2 - 50, 
+            `恭喜完成!\n用时: ${elapsed}秒\n获得${medalType}!`, {
+            fontSize: '32px',
+            fill: '#ffffff',
             align: 'center'
         }).setOrigin(0.5);
 
-        // 点击关闭结果对话框，但保持在当前场景
-        this.input.once('pointerdown', () => {
-            window.gameState.medals.ecommerce = true;
-            overlay.destroy();
-            dialogBox.destroy();
-            medal.destroy();
-            glow.destroy();
-            resultText.destroy();
-            commentText.destroy();
-        });
-
-        // 添加奖牌获得动画
-        medal.setScale(0);
-        this.tweens.add({
-            targets: medal,
-            scale: 1.5,
-            duration: 1000,
-            ease: 'Bounce.Out'
-        });
-    }
-
-    // 修改角色打包动画
-    playPackageAnimation() {
-        const originalScale = this.player.scaleX;
-        
-        this.tweens.add({
-            targets: this.player,
-            scaleX: originalScale * 1.2,
-            scaleY: originalScale * 0.8,
-            duration: 200,
-            yoyo: true,
-            ease: 'Power1',
-            onComplete: () => {
-                this.player.setScale(originalScale);
-            }
-        });
+        // 添加返回按钮
+        const button = this.add.text(width/2, height/2 + 50, '返回选择场景', {
+            fontSize: '24px',
+            fill: '#ffffff',
+            backgroundColor: '#000000',
+            padding: { x: 20, y: 10 }
+        }).setOrigin(0.5)
+            .setInteractive()
+            .on('pointerdown', () => {
+                this.scene.start('SceneSelectScene');
+            });
     }
 
     // 添加更新方法
