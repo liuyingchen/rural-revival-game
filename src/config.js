@@ -15,9 +15,13 @@ console.log('场景加载完成');
 
 const config = {
     type: Phaser.AUTO,
-    width: 800,
-    height: 600,
-    parent: 'game',  // 添加 parent 配置
+    width: 1308,  // 修改为新图片的宽度
+    height: 736,  // 修改为新图片的高度
+    parent: 'game',
+    scale: {
+        mode: Phaser.Scale.FIT,  // 自动适配屏幕
+        autoCenter: Phaser.Scale.CENTER_BOTH
+    },
     scene: [
         BootScene,
         PreloadScene,

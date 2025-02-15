@@ -7,6 +7,37 @@ export default class CharacterSelectScene extends Phaser.Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
+        this.add.image(width/2, height/2, 'main-bg')
+            .setDisplaySize(width, height);
+
+        const backButton = this.add.container(100, 50);
+        const backBg = this.add.image(0, 0, 'button')
+            .setDisplaySize(120, 40);
+        const backText = this.add.text(0, 0, '返回', {
+            fontSize: '20px',
+            fill: '#ffffff'
+        }).setOrigin(0.5);
+        backButton.add([backBg, backText]);
+        backButton.setSize(120, 40);
+        backButton.setInteractive();
+
+        backButton.on('pointerover', () => {
+            backBg.setScale(1.1);
+            backText.setScale(1.1);
+        });
+
+        backButton.on('pointerout', () => {
+            backBg.setScale(1);
+            backText.setScale(1);
+        });
+
+        backButton.on('pointerdown', () => {
+            if (window.gameState) {
+                window.gameState.character = null;
+            }
+            this.scene.start('PreloadScene');
+        });
+
         this.add.text(width/2, 100, '选择你的角色', {
             fontSize: '32px',
             fill: '#000000'

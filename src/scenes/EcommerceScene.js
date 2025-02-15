@@ -5,6 +5,7 @@ export default class EcommerceScene extends Phaser.Scene {
         this.boxesCompleted = 0;  // 完成的箱子数
         this.gameStartTime = 0;   // 游戏开始时间
         this.isPlaying = false;
+        this.packages = [];  // 存储所有包裹
     }
 
     create() {
@@ -15,11 +16,61 @@ export default class EcommerceScene extends Phaser.Scene {
         this.add.image(width/2, height/2, 'ecommerce-bg')
             .setDisplaySize(width, height);
 
-        // 添加标题
-        this.add.text(width/2, 50, '农村电商', {
-            fontSize: '32px',
-            fill: '#000000'
-        }).setOrigin(0.5);
+        // 添加静态传送带
+        this.conveyor = this.add.image(
+            width * 0.65,    // 水平位置改为0.5，放在中间偏右位置
+            height * 0.75,   // 垂直位置改为0.7，与角色同高
+            'conveyor'
+        ).setScale(0.5);    // 放大一点以适应蓝色框的大小
+
+        // 添加选择的角色
+        const characterType = window.gameState.character || 'female';
+        this.player = this.add.sprite(
+            width * 0.25,
+            height * 0.7,
+            characterType
+        ).setScale(0.8);
+
+        // 添加打开状态的包裹（初始包裹）
+        this.openPackage = this.add.image(
+            this.conveyor.x - this.conveyor.width * 0.3,  // 调整包裹位置，放在传送带左侧
+            this.conveyor.y - 20,  // 稍微抬高一点
+            'package-open'
+        ).setScale(0.5)
+            .setInteractive();
+
+        // 点击事件处理
+        this.openPackage.on('pointerdown', () => {
+            if (this.isPlaying) {
+                this.addNewPackage();
+                this.playPackageAnimation();
+            }
+        });
+
+        // 添加键盘控制
+        this.cursors = this.input.keyboard.createCursorKeys();
+
+        // 创建状态文本（右侧）
+        this.timeText = this.add.text(width - 150, 50, '用时: 0秒', {
+            fontSize: '24px',
+            fill: '#000',
+            backgroundColor: '#ffffff80',
+            padding: { x: 10, y: 5 }
+        });
+
+        this.boxText = this.add.text(width - 150, 90, `箱数: ${this.boxesCompleted}/5`, {
+            fontSize: '24px',
+            fill: '#000',
+            backgroundColor: '#ffffff80',
+            padding: { x: 10, y: 5 }
+        });
+
+        this.packageText = this.add.text(width - 150, 130, `包裹: ${this.packageCount}/10`, {
+            fontSize: '24px',
+            fill: '#000',
+            backgroundColor: '#ffffff80',
+            padding: { x: 10, y: 5 }
+        });
 
         // 添加返回按钮
         const backButton = this.add.container(100, 50);
@@ -36,36 +87,6 @@ export default class EcommerceScene extends Phaser.Scene {
             this.scene.start('SceneSelectScene');
         });
 
-        // 创建包裹箱
-        this.createPackageBox();
-
-        // 创建状态文本（改回原位置）
-        this.boxText = this.add.text(650, 90, `箱数: ${this.boxesCompleted}/5`, {
-            fontSize: '24px',
-            fill: '#000'
-        });
-
-        this.packageText = this.add.text(650, 130, `包裹: ${this.packageCount}/10`, {
-            fontSize: '24px',
-            fill: '#000'
-        });
-
-        this.timeText = this.add.text(650, 50, '用时: 0秒', {
-            fontSize: '24px',
-            fill: '#000'
-        });
-
-        // 创建包裹图片（改回原位置）
-        this.package = this.add.image(700, 450, 'package')
-            .setScale(0.5)
-            .setInteractive();
-
-        this.package.on('pointerdown', () => {
-            if (this.isPlaying) {
-                this.addPackage();
-            }
-        });
-
         this.showStartPrompt();
     }
 
@@ -75,27 +96,29 @@ export default class EcommerceScene extends Phaser.Scene {
 
         // 创建半透明黑色背景
         const overlay = this.add.graphics();
-        overlay.fillStyle(0x000000, 0.7);
+        overlay.fillStyle(0x000000, 0.5);
         overlay.fillRect(0, 0, width, height);
 
-        // 创建对话框背景
+        // 创建木质风格的对话框背景
         const dialogBox = this.add.graphics();
         
-        // 添加阴影效果
-        dialogBox.fillStyle(0x000000, 0.3);
+        // 木质背景色
+        const woodColor = 0xE6D5AC;  // 浅木色
+        const borderColor = 0x8B4513;  // 深木色边框
+
+        // 添加外边框阴影效果
+        dialogBox.fillStyle(borderColor, 0.3);
         dialogBox.fillRoundedRect(
-            width/2 - 290, 
-            height/2 - 140, 
-            600, 
-            300, 
+            width/2 - 310, 
+            height/2 - 160, 
+            620, 
+            320, 
             20
         );
 
         // 主对话框
-        dialogBox.fillGradientStyle(
-            0xFFFFFF, 0xFFFFFF, 0xF0F0F0, 0xF0F0F0,
-            1, 1, 0.9, 0.9
-        );
+        dialogBox.lineStyle(4, borderColor);
+        dialogBox.fillStyle(woodColor, 0.95);
         dialogBox.fillRoundedRect(
             width/2 - 300, 
             height/2 - 150, 
@@ -103,9 +126,6 @@ export default class EcommerceScene extends Phaser.Scene {
             300, 
             20
         );
-
-        // 对话框边框
-        dialogBox.lineStyle(4, 0x4A90E2);
         dialogBox.strokeRoundedRect(
             width/2 - 300, 
             height/2 - 150, 
@@ -114,122 +134,159 @@ export default class EcommerceScene extends Phaser.Scene {
             20
         );
 
-        // 添加标题
-        const title = this.add.text(width/2, height/2 - 130, '农村电商', {
-            fontSize: '32px',
-            fontWeight: 'bold',
-            fill: '#4A90E2',
-            align: 'center'
+        // 添加木纹纹理效果
+        const woodPattern = this.add.graphics();
+        woodPattern.lineStyle(1, borderColor, 0.1);
+        for (let i = 0; i < 30; i++) {
+            woodPattern.lineBetween(
+                width/2 - 300, 
+                height/2 - 150 + i * 10, 
+                width/2 + 300, 
+                height/2 - 150 + i * 10
+            );
+        }
+
+        // 调整文字内容的位置（由于没有标题，所以往上移）
+        const content = this.add.text(width/2, height/2, '', {
+            fontSize: '24px',
+            fontFamily: 'Arial, PingFang SC, Microsoft YaHei',
+            fill: '#4A3000',
+            align: 'center',
+            lineSpacing: 10,
+            wordWrap: { width: 500 }
         }).setOrigin(0.5);
 
-        // 添加装饰线
-        const decorLine = this.add.graphics();
-        decorLine.lineStyle(2, 0x4A90E2);
-        decorLine.beginPath();
-        decorLine.moveTo(width/2 - 100, height/2 - 100);
-        decorLine.lineTo(width/2 + 100, height/2 - 100);
-        decorLine.strokePath();
-
-        // 准备要显示的文字
+        // 准备文字内容
         const messages = [
-            "随着互联网技术的发展，",
-            "农村电商正在蓬勃发展，",
-            "它为农产品打开了新的销路，",
-            "让农民足不出户就能做生意。",
-            "",
-            "现在，你是一名农村电商从业者，",
-            "需要帮助村民们打包快递。",
-            "",
-            "准备好了吗？点击任意位置开始游戏！"
+            '欢迎来到乡村电商快递站！',
+            '现在，你是一名农村电商从业者，',
+            '这里是村里新建的电商服务站。',
+            '我们要帮助村民们打包农产品快递，',
+            '把新鲜的农产品送到城里的消费者手中。',
+            '记住：速度要快，包装要好！',
+            '一个箱子可以装10个包裹，',
+            '我们今天的任务是完成5个箱子。',
+            '',
+            '准备好了吗？点击任意位置开始游戏！'
         ];
 
+        let currentText = '';
         let messageIndex = 0;
         let charIndex = 0;
-        let displayLines = [];  // 用于存储当前显示的行
-        const maxLines = 4;     // 最大显示行数
-
-        // 创建文本对象
-        const text = this.add.text(width/2, height/2, '', {
-            fontSize: '24px',
-            fill: '#333333',
-            align: 'center',
-            lineSpacing: 15,
-            fontFamily: 'Arial, PingFang SC, Microsoft YaHei'
-        }).setOrigin(0.5);
-
-        // 添加提示文本（调整位置）
-        const hintText = this.add.text(width/2, height/2 + 130, '点击任意位置继续...', {
-            fontSize: '18px',
-            fill: '#666666',
-            align: 'center'
-        }).setOrigin(0.5);
-
-        // 让提示文本闪烁
-        this.tweens.add({
-            targets: hintText,
-            alpha: 0,
-            duration: 1000,
-            ease: 'Power1',
-            yoyo: true,
-            repeat: -1
-        });
-
-        // 添加打字机效果
-        const typing = this.time.addEvent({
-            delay: 50,
+        
+        // 文字动画定时器
+        const textTimer = this.time.addEvent({
+            delay: 40,  // 稍微加快文字显示速度
             callback: () => {
                 if (messageIndex < messages.length) {
                     if (charIndex < messages[messageIndex].length) {
-                        // 添加新字符
-                        if (displayLines.length === 0) {
-                            displayLines.push('');
-                        }
-                        displayLines[displayLines.length - 1] += messages[messageIndex][charIndex];
+                        currentText += messages[messageIndex][charIndex];
+                        content.setText(currentText);
                         charIndex++;
                     } else {
-                        // 完成一行
+                        currentText += '\n';
                         messageIndex++;
                         charIndex = 0;
+                        
+                        // 每显示完一句话停顿一下
                         if (messageIndex < messages.length) {
-                            displayLines.push('');
-                            // 如果超过最大行数，移除第一行
-                            if (displayLines.length > maxLines) {
-                                displayLines.shift();
-                            }
+                            this.time.delayedCall(300, () => {}, [], this);
                         }
                     }
-                    // 更新显示的文本
-                    text.setText(displayLines.join('\n'));
+
+                    // 保持最多显示4行文字
+                    const lines = currentText.split('\n');
+                    if (lines.length > 4) {
+                        lines.shift();  // 移除第一行
+                        currentText = lines.join('\n');
+                    }
+                    content.setText(currentText);
+                } else {
+                    textTimer.destroy();
                 }
             },
-            repeat: -1
+            callbackScope: this,
+            loop: true
         });
 
-        // 点击任意位置关闭对话框并开始游戏
+        // 点击任意位置开始游戏
         this.input.once('pointerdown', () => {
-            typing.destroy();
+            textTimer.destroy();  // 停止文字动画
             overlay.destroy();
             dialogBox.destroy();
-            text.destroy();
-            title.destroy();
-            decorLine.destroy();
-            hintText.destroy();
-            this.startGame();
+            woodPattern.destroy();
+            content.destroy();
+            
+            // 设置游戏状态和开始时间
+            this.isPlaying = true;
+            this.gameStartTime = Date.now();
+            
+            // 开始计时
+            this.timer = this.time.addEvent({
+                delay: 100,
+                callback: this.updateTimer,
+                callbackScope: this,
+                loop: true
+            });
         });
     }
 
     createPackageBox() {
-        const boxZone = this.add.zone(100, 400, 150, 150)
-            .setRectangleDropZone(150, 150);
+        // 创建一个半透明的蓝色高亮区域
+        const highlightZone = this.add.graphics();
+        highlightZone.fillStyle(0x4A90E2, 0.1);  // 非常淡的蓝色
+        highlightZone.fillRect(50, 350, 200, 200);
 
-        const graphics = this.add.graphics();
-        graphics.lineStyle(2, 0x000000);
-        graphics.strokeRect(
-            boxZone.x - boxZone.width/2, 
-            boxZone.y - boxZone.height/2, 
-            boxZone.width, 
-            boxZone.height
-        );
+        // 创建一个虚线边框的投放区域
+        const dropZone = this.add.graphics();
+        dropZone.lineStyle(2, 0x4A90E2, 0.8);  // 蓝色虚线边框
+
+        // 绘制虚线边框
+        const spacing = 10;  // 虚线间隔
+        const x = 50;
+        const y = 350;
+        const width = 200;
+        const height = 200;
+
+        // 绘制四条虚线边
+        for (let i = 0; i < width; i += spacing * 2) {
+            // 上边框
+            dropZone.strokeLineSegment(x + i, y, x + Math.min(i + spacing, width), y);
+            // 下边框
+            dropZone.strokeLineSegment(x + i, y + height, x + Math.min(i + spacing, width), y + height);
+        }
+        for (let i = 0; i < height; i += spacing * 2) {
+            // 左边框
+            dropZone.strokeLineSegment(x, y + i, x, y + Math.min(i + spacing, height));
+            // 右边框
+            dropZone.strokeLineSegment(x + width, y + i, x + width, y + Math.min(i + spacing, height));
+        }
+
+        // 创建实际的投放区域
+        const boxZone = this.add.zone(150, 450, 200, 200)
+            .setRectangleDropZone(200, 200);
+
+        // 添加投放区域的交互效果
+        boxZone.on('dragenter', () => {
+            highlightZone.clear();
+            highlightZone.fillStyle(0x4A90E2, 0.2);  // 加深高亮颜色
+            highlightZone.fillRect(50, 350, 200, 200);
+        });
+
+        boxZone.on('dragleave', () => {
+            highlightZone.clear();
+            highlightZone.fillStyle(0x4A90E2, 0.1);  // 恢复原来的高亮颜色
+            highlightZone.fillRect(50, 350, 200, 200);
+        });
+
+        // 添加动画效果
+        this.tweens.add({
+            targets: highlightZone,
+            alpha: 0.5,
+            duration: 1000,
+            yoyo: true,
+            repeat: -1
+        });
     }
 
     startGame() {
@@ -250,24 +307,38 @@ export default class EcommerceScene extends Phaser.Scene {
         this.timeText.setText(`用时: ${elapsed}秒`);
     }
 
-    addPackage() {
-        this.packageCount++;
-        this.packageText.setText(`包裹: ${this.packageCount}/10`);
+    addNewPackage() {
+        const newPackage = this.add.image(
+            this.openPackage.x,  // 从打开包裹的位置开始
+            this.openPackage.y,
+            'package-closed'  // 需要新的关闭状态包裹图片
+        ).setScale(0.5);
 
-        if (this.packageCount >= 10) {
-            // 一个箱子装满了
-            this.packageCount = 0;
-            this.boxesCompleted++;
-            this.boxText.setText(`箱数: ${this.boxesCompleted}/5`);
+        // 添加移动动画
+        this.tweens.add({
+            targets: newPackage,
+            x: this.conveyor.x + this.conveyor.width * 0.4,  // 移动到传送带右侧
+            duration: 1500,
+            ease: 'Linear',
+            onComplete: () => {
+                // 完成时销毁包裹
+                newPackage.destroy();
+                // 更新计数
+                this.packageCount++;
+                this.packageText.setText(`包裹: ${this.packageCount}/10`);
 
-            // 显示箱子完成的提示
-            if (this.boxesCompleted < 5) {
-                this.showBoxCompletedMessage();
-            } else {
-                // 所有箱子都完成了
-                this.endGame();
+                if (this.packageCount >= 10) {
+                    this.boxesCompleted++;
+                    this.boxText.setText(`箱数: ${this.boxesCompleted}/5`);
+                    this.packageCount = 0;
+                    this.packageText.setText(`包裹: ${this.packageCount}/10`);
+
+                    if (this.boxesCompleted >= 5) {
+                        this.endGame();
+                    }
+                }
             }
-        }
+        });
     }
 
     showBoxCompletedMessage() {
@@ -321,14 +392,6 @@ export default class EcommerceScene extends Phaser.Scene {
         dialogBox.fillRoundedRect(200, 100, 400, 400, 20);
         dialogBox.lineStyle(4, 0x4A90E2);
         dialogBox.strokeRoundedRect(200, 100, 400, 400, 20);
-
-        // 添加标题
-        const title = this.add.text(400, 150, '恭喜完成！', {
-            fontSize: '32px',
-            fontWeight: 'bold',
-            fill: '#4A90E2',
-            align: 'center'
-        }).setOrigin(0.5);
 
         // 添加奖牌图标
         const medal = this.add.image(400, 250, 'medal')
@@ -385,7 +448,6 @@ export default class EcommerceScene extends Phaser.Scene {
             window.gameState.medals.ecommerce = true;
             overlay.destroy();
             dialogBox.destroy();
-            title.destroy();
             medal.destroy();
             glow.destroy();
             resultText.destroy();
@@ -400,5 +462,44 @@ export default class EcommerceScene extends Phaser.Scene {
             duration: 1000,
             ease: 'Bounce.Out'
         });
+    }
+
+    // 修改角色打包动画
+    playPackageAnimation() {
+        const originalScale = this.player.scaleX;
+        
+        this.tweens.add({
+            targets: this.player,
+            scaleX: originalScale * 1.2,
+            scaleY: originalScale * 0.8,
+            duration: 200,
+            yoyo: true,
+            ease: 'Power1',
+            onComplete: () => {
+                this.player.setScale(originalScale);
+            }
+        });
+    }
+
+    // 添加更新方法
+    update() {
+        if (this.isPlaying) {
+            // 只保留角色移动逻辑
+            if (this.cursors.left.isDown) {
+                this.player.x -= 4;
+                this.player.setFlipX(true);
+            }
+            else if (this.cursors.right.isDown) {
+                this.player.x += 4;
+                this.player.setFlipX(false);
+            }
+
+            // 限制角色移动范围
+            this.player.x = Phaser.Math.Clamp(
+                this.player.x,
+                100,
+                this.cameras.main.width - 100
+            );
+        }
     }
 }

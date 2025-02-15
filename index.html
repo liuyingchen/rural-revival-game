@@ -12,14 +12,27 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #f0f0f0;
+            background-color: #000000;
+        }
+        #game {
+            max-width: 100vw;
+            max-height: 100vh;
         }
     </style>
     <script>
-        // 添加错误处理
-        window.onerror = function(msg, url, line) {
-            console.error('Error:', msg, '\nURL:', url, '\nLine:', line);
+        // 添加详细的错误处理
+        window.onerror = function(msg, url, line, col, error) {
+            console.error('Error: ' + msg + '\nurl: ' + url + '\nline: ' + line + '\ncol: ' + col + '\nerror: ' + error);
+            return false;
         };
+
+        // 添加资源加载错误处理
+        window.addEventListener('error', function(e) {
+            if (e.target.tagName === 'IMG' || e.target.tagName === 'SCRIPT') {
+                console.error('Resource loading error:', e.target.src);
+            }
+        }, true);
+
         console.log('页面开始加载...');
     </script>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
