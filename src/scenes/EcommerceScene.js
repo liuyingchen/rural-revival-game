@@ -40,12 +40,15 @@ export default class EcommerceScene extends Phaser.Scene {
             .setInteractive()
             .on('pointerover', () => {
                 // 鼠标悬停效果
-                this.openBox.setTint(0x88ff88);  // 添加浅绿色
+                this.openBox.setTint(0x88ff88);
             })
             .on('pointerout', () => {
                 // 鼠标移出效果
                 this.openBox.clearTint();
             });
+
+        // 添加箱子的提示动画
+        this.addBoxHintAnimations();
 
         // 点击事件处理
         this.openBox.on('pointerdown', () => {
@@ -495,5 +498,66 @@ export default class EcommerceScene extends Phaser.Scene {
                 this.cameras.main.width - 100
             );
         }
+    }
+
+    // 添加箱子提示动画
+    addBoxHintAnimations() {
+        // 1. 添加上下浮动动画
+        this.tweens.add({
+            targets: this.openBox,
+            y: this.openBox.y - 10,
+            duration: 1000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+
+        // 2. 添加点击提示光圈
+        const circle = this.add.circle(
+            this.openBox.x,
+            this.openBox.y,
+            50,
+            0xffff00,
+            0.3
+        );
+
+        // 光圈动画
+        this.tweens.add({
+            targets: circle,
+            scale: 1.5,
+            alpha: 0,
+            duration: 1000,
+            repeat: -1,
+            ease: 'Cubic.easeOut'
+        });
+
+        // 3. 添加闪光效果
+        const flash = this.add.image(
+            this.openBox.x,
+            this.openBox.y,
+            'sparkle'
+        ).setScale(0.3).setAlpha(0.6);
+
+        this.tweens.add({
+            targets: flash,
+            alpha: 0,
+            scale: 0.5,
+            duration: 1500,
+            repeat: -1,
+            ease: 'Cubic.easeOut'
+        });
+
+        // 4. 当点击箱子时，移除所有提示动画
+        this.openBox.on('pointerdown', () => {
+            if (this.isPlaying) {
+                // 停止浮动动画
+                this.tweens.killTweensOf(this.openBox);
+                // 移除提示效果
+                circle.destroy();
+                flash.destroy();
+                // 重置箱子位置
+                this.openBox.y = this.conveyor.y + 45;
+            }
+        });
     }
 }

@@ -10,6 +10,24 @@ export default class SceneSelectScene extends Phaser.Scene {
         this.add.image(width/2, height/2, 'main-bg')
             .setDisplaySize(width, height);
 
+        const characterType = window.gameState.character || 'male';
+        this.player = this.add.image(
+            width * 0.2,  // 放在左侧
+            height * 0.7,  // 靠下方
+            characterType
+        ).setScale(0.8);  // 设置合适的大小
+
+        this.player.alpha = 0;
+        this.player.x -= 100;  // 从左侧开始
+
+        this.tweens.add({
+            targets: this.player,
+            x: width * 0.2,
+            alpha: 1,
+            duration: 800,
+            ease: 'Back.out'
+        });
+
         this.add.text(width/2, 50, '选择游戏场景', {
             fontSize: '32px',
             fill: '#000000'
@@ -70,6 +88,13 @@ export default class SceneSelectScene extends Phaser.Scene {
         [ecommerceButton, cultureButton, agricultureButton, backButton].forEach(button => {
             button.on('pointerover', () => {
                 button.first.setScale(1.1);
+                this.tweens.add({
+                    targets: this.player,
+                    scaleX: 0.85,
+                    scaleY: 0.75,
+                    duration: 200,
+                    yoyo: true
+                });
             });
 
             button.on('pointerout', () => {

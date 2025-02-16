@@ -43,13 +43,13 @@ export default class CharacterSelectScene extends Phaser.Scene {
             fill: '#000000'
         }).setOrigin(0.5);
 
-        const maleButton = this.add.image(width/3, height/2, 'male')
+        this.maleButton = this.add.image(width/3, height/2, 'male')
             .setInteractive()
-            .setScale(0.8);
+            .setScale(0.88);
 
-        const femaleButton = this.add.image(width*2/3, height/2, 'female')
+        this.femaleButton = this.add.image(width*2/3, height/2, 'female')
             .setInteractive()
-            .setScale(0.8);
+            .setScale(0.88);
 
         this.add.text(width/3, height/2 + 150, '男性角色', {
             fontSize: '24px',
@@ -61,17 +61,112 @@ export default class CharacterSelectScene extends Phaser.Scene {
             fill: '#000000'
         }).setOrigin(0.5);
 
-        maleButton.on('pointerdown', () => {
-            this.selectCharacter('male');
-        });
+        this.maleButton.on('pointerdown', () => this.selectCharacter('male', this.maleButton));
+        this.femaleButton.on('pointerdown', () => this.selectCharacter('female', this.femaleButton));
 
-        femaleButton.on('pointerdown', () => {
-            this.selectCharacter('female');
+        [this.maleButton, this.femaleButton].forEach(button => {
+            button.on('pointerover', () => {
+                this.tweens.add({
+                    targets: button,
+                    scale: 0.95,
+                    duration: 200
+                });
+            });
+
+            button.on('pointerout', () => {
+                this.tweens.add({
+                    targets: button,
+                    scale: 0.88,
+                    duration: 200
+                });
+            });
         });
     }
 
-    selectCharacter(character) {
-        window.gameState.character = character;
-        this.scene.start('SceneSelectScene');
+    selectCharacter(character, selectedChar) {
+        this.maleButton.disableInteractive();
+        this.femaleButton.disableInteractive();
+
+        const createCircle = (radius, alpha, delay) => {
+            const circle = this.add.circle(
+                selectedChar.x,
+                selectedChar.y,
+                radius,
+                0xFFFFFF,
+                alpha
+            );
+
+            this.tweens.add({
+                targets: circle,
+                scale: 3,
+                alpha: 0,
+                duration: 800,
+                delay: delay,
+                ease: 'Cubic.out',
+                onComplete: () => circle.destroy()
+            });
+        };
+
+        createCircle(80, 0.4, 0);
+        createCircle(80, 0.3, 200);
+        createCircle(80, 0.2, 400);
+
+        this.tweens.add({
+            targets: selectedChar,
+            scaleX: 0,
+            duration: 400,
+            ease: 'Cubic.easeIn',
+            onComplete: () => {
+                selectedChar.toggleFlipX();
+                
+                this.tweens.add({
+                    targets: selectedChar,
+                    scaleX: 0.88,
+                    duration: 400,
+                    ease: 'Cubic.easeOut',
+                    onComplete: () => {
+                        this.tweens.add({
+                            targets: selectedChar,
+                            scaleX: 0,
+                            duration: 400,
+                            ease: 'Cubic.easeIn',
+                            onComplete: () => {
+                                selectedChar.toggleFlipX();
+                                
+                                this.tweens.add({
+                                    targets: selectedChar,
+                                    scaleX: 1,
+                                    duration: 400,
+                                    ease: 'Back.easeOut',
+                                    onComplete: () => {
+                                        this.tweens.add({
+                                            targets: selectedChar,
+                                            scaleY: 0.9,
+                                            duration: 100,
+                                            yoyo: true,
+                                            repeat: 1,
+                                            onComplete: () => {
+                                                this.time.delayedCall(300, () => {
+                                                    window.gameState.character = character;
+                                                    this.scene.start('SceneSelectScene');
+                                                });
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        });
+
+        const unselectedChar = character === 'male' ? this.femaleButton : this.maleButton;
+        this.tweens.add({
+            targets: unselectedChar,
+            alpha: 0.3,
+            duration: 400,
+            ease: 'Linear'
+        });
     }
 }

@@ -24,9 +24,9 @@ export default class PreloadScene extends Phaser.Scene {
 
         // 预先加载所有需要的资源
         this.load.image('preload-bg', 'assets/images/common/preload-bg.png');
+        this.load.image('main-bg', 'assets/images/common/main-bg.png');
         this.load.image('button', 'assets/images/ui/button.png');
         this.load.image('loading-bg', 'assets/images/common/loading-bg.png');
-        this.load.image('main-bg', 'assets/images/common/main-bg.png');
         this.load.image('male', 'assets/images/characters/male.png');
         this.load.image('female', 'assets/images/characters/female.png');
         this.load.image('medal', 'assets/images/ui/medal.png');
@@ -53,14 +53,15 @@ export default class PreloadScene extends Phaser.Scene {
     }
 
     create() {
-        console.log('PreloadScene - create - 开始创建场景');
+        console.log('PreloadScene - create');
         
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
         try {
             // 显示背景图
-            const bg = this.add.image(width/2, height/2, 'preload-bg');
+            const bg = this.add.image(width/2, height/2, 'preload-bg')
+                .setDisplaySize(width, height);
             console.log('背景图加载成功');
 
             // 创建开始按钮
