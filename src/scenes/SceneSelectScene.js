@@ -88,13 +88,6 @@ export default class SceneSelectScene extends Phaser.Scene {
         [ecommerceButton, cultureButton, agricultureButton, backButton].forEach(button => {
             button.on('pointerover', () => {
                 button.first.setScale(1.1);
-                this.tweens.add({
-                    targets: this.player,
-                    scaleX: 0.85,
-                    scaleY: 0.75,
-                    duration: 200,
-                    yoyo: true
-                });
             });
 
             button.on('pointerout', () => {
