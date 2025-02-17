@@ -50,6 +50,15 @@ export default class PreloadScene extends Phaser.Scene {
 
         // 加载特效
         this.load.image('sparkle', 'assets/images/effects/sparkle.png');
+
+        // 加载农业场景资源
+        this.load.image('agriculture-bg', 'assets/images/scenes/agriculture/background.png');
+        this.load.image('airplane', 'assets/images/scenes/agriculture/airplane.png');  // 改为加载飞机图片
+
+        // 加载特效
+        this.load.image('water-drop', 'assets/images/effects/water-drop.png');
+        this.load.image('seed', 'assets/images/effects/seed.png');
+        this.load.image('fertilizer', 'assets/images/effects/fertilizer.png');
     }
 
     create() {
