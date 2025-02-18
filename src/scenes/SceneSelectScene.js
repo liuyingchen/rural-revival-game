@@ -38,26 +38,39 @@ export default class SceneSelectScene extends Phaser.Scene {
             fill: '#ffffff'
         };
 
-        const ecommerceButton = this.add.container(width/2, height/2 - 100);
-        const ecommerceBg = this.add.image(0, 0, 'button').setDisplaySize(300, 80);
-        const ecommerceText = this.add.text(0, 0, '农村电商', buttonStyle).setOrigin(0.5);
-        ecommerceButton.add([ecommerceBg, ecommerceText]);
-        ecommerceButton.setSize(300, 80);
-        ecommerceButton.setInteractive();
 
-        const cultureButton = this.add.container(width/2, height/2);
-        const cultureBg = this.add.image(0, 0, 'button').setDisplaySize(300, 80);
-        const cultureText = this.add.text(0, 0, '文化乡村', buttonStyle).setOrigin(0.5);
-        cultureButton.add([cultureBg, cultureText]);
-        cultureButton.setSize(300, 80);
-        cultureButton.setInteractive();
+       // 电商场景按钮
+const ecommerceButton = this.add.container(width/2, height/2 - 100);
+const ecommerceBg = this.add.image(0, 0, 'ecommerce-scene')
+    .setDisplaySize(300, 80);
+const ecommerceText = this.add.text(0, 0, '农村电商', buttonStyle)
+    .setOrigin(0.5)
+    .setDepth(1);  // 确保文字在图片上方
+ecommerceButton.add([ecommerceBg, ecommerceText]);
+ecommerceButton.setSize(300, 80);
+ecommerceButton.setInteractive();  // 添加这行
 
-        const agricultureButton = this.add.container(width/2, height/2 + 100);
-        const agricultureBg = this.add.image(0, 0, 'button').setDisplaySize(300, 80);
-        const agricultureText = this.add.text(0, 0, '现代化农业', buttonStyle).setOrigin(0.5);
-        agricultureButton.add([agricultureBg, agricultureText]);
-        agricultureButton.setSize(300, 80);
-        agricultureButton.setInteractive();
+// 文化场景按钮
+const cultureButton = this.add.container(width/2, height/2);
+const cultureBg = this.add.image(0, 0, 'culture-scene')
+    .setDisplaySize(300, 80);
+const cultureText = this.add.text(0, 0, '文化乡村', buttonStyle)
+    .setOrigin(0.5)
+    .setDepth(1);
+cultureButton.add([cultureBg, cultureText]);
+cultureButton.setSize(300, 80);
+cultureButton.setInteractive();  // 添加这行
+
+// 农业场景按钮
+const agricultureButton = this.add.container(width/2, height/2 + 100);
+const agricultureBg = this.add.image(0, 0, 'agriculture-scene')
+    .setDisplaySize(300, 80);
+const agricultureText = this.add.text(0, 0, '现代化农业', buttonStyle)
+    .setOrigin(0.5)
+    .setDepth(1);
+agricultureButton.add([agricultureBg, agricultureText]);
+agricultureButton.setSize(300, 80);
+agricultureButton.setInteractive();  // 添加这行
 
         const backButton = this.add.container(100, 50);
         const backBg = this.add.image(0, 0, 'button').setDisplaySize(120, 40);
