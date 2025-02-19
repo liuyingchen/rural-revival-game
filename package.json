@@ -4,6 +4,7 @@
   "description": "乡村振兴主题游戏",
   "main": "src/config.js",
   "scripts": {
+    "start": "http-server -p 8080",
     "clean": "rm -rf .cache dist",
     "start:dev": "live-server --port=3000 --host=localhost --no-browser --mount=/src:./src",
     "build": "parcel build index.html"

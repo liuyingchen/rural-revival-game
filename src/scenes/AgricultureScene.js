@@ -46,7 +46,14 @@ export default class AgricultureScene extends Phaser.Scene {
             .setScale(0.3)
             .setDepth(1);
 
-        this.createBackButton();
+        // 添加返回按钮（只保留这一个）
+        const backButton = this.add.image(80, 40, 'back')
+            .setScale(0.6)
+            .setDepth(2)
+            .setInteractive()
+            .on('pointerdown', () => {
+                this.scene.start('SceneSelectScene');
+            });
         
         // 重置游戏状态
         this.isPlaying = false;
@@ -56,12 +63,8 @@ export default class AgricultureScene extends Phaser.Scene {
         
         this.addAirplaneHintEffects();
         
-        // 检查是否已经获得奖牌
-        if (window.gameState.medals.agriculture) {
-            this.showCompletedScene();
-        } else {
-            this.showStartPrompt();
-        }
+        // 移除对已完成状态的检查，直接显示开始提示
+        this.showStartPrompt();
 
         // 添加点击监听
         this.input.on('pointerdown', (pointer) => {
@@ -75,6 +78,18 @@ export default class AgricultureScene extends Phaser.Scene {
 
         // 添加无人机提示动画
         this.addDroneHintAnimations();
+
+        // 添加时间显示
+        this.timeText = this.add.text(this.width - 150, 20, '时间: 0秒', {
+            fontSize: '24px',
+            fill: '#000',
+            backgroundColor: '#ffffff80',
+            padding: { x: 10, y: 5 }
+        }).setDepth(2);
+
+        // 初始化游戏时间
+        this.gameTime = 0;
+        this.gameTimer = null;
     }
 
     handleClick(x, y) {
@@ -159,32 +174,121 @@ export default class AgricultureScene extends Phaser.Scene {
 
     showCompletionMessage() {
         this.isPlaying = false;
-        this.isAirplaneFlying = false;  // 重置飞行状态
+        this.isAirplaneFlying = false;
         
-        const overlay = this.add.graphics();
-        overlay.fillStyle(0x000000, 0.7);
-        overlay.fillRect(0, 0, this.width, this.height);
+        // 停止计时器
+        if (this.gameTimer) {
+            this.gameTimer.remove();
+        }
 
-        const messageBox = this.add.graphics();
-        messageBox.fillStyle(0xE6D5AC, 0.95);
-        messageBox.lineStyle(4, 0x8B4513);
-        messageBox.fillRoundedRect(this.width/2 - 300, this.height/2 - 150, 600, 300, 20);
-        messageBox.strokeRoundedRect(this.width/2 - 300, this.height/2 - 150, 600, 300, 20);
+        // 确定奖牌等级
+        let medal = null;
+        if (this.gameTime <= 20) {
+            medal = 'gold';
+        } else if (this.gameTime <= 30) {
+            medal = 'silver';
+        } else {
+            medal = 'bronze';
+        }
 
-        const content = this.add.text(this.width/2, this.height/2, 
-            '太棒了！\n\n' +
-            '在你的努力下，农田焕发新生机！\n' +
-            '现代化农业让乡村更有活力！\n\n' +
-            '点击任意位置返回', {
+        // 更新玩家奖励
+        playerManager.updateGameMedal('agriculture', medal);
+
+        // 添加奖励背景
+        const bg = this.add.image(this.width/2, this.height/2, 'reward-bg')
+            .setDisplaySize(this.width, this.height)
+            .setDepth(5);
+
+        // 添加 CONGRATULATIONS 标题
+        const title = this.add.text(this.width/2, this.height * 0.2, 'CONGRATULATIONS', {
+            fontSize: '48px',
+            fontWeight: 'bold',
+            fill: '#FFD700',
+            stroke: '#000000',
+            strokeThickness: 6
+        })
+        .setOrigin(0.5)
+        .setDepth(6);
+
+        // 修改奖牌图片的大小
+        const medalImage = this.add.image(this.width/2, this.height * 0.45, `${medal}`)
+            .setScale(0.4)  // 从 0.8 改为 0.4
+            .setDepth(6);
+
+        // 添加 GOLDEN PASS 文本（或对应的银牌、铜牌文本）
+        const passText = this.add.text(this.width/2, this.height * 0.65, 
+            `${medal.toUpperCase()} PASS`, {
+            fontSize: '36px',
+            fontWeight: 'bold',
+            fill: '#FFD700',
+            stroke: '#000000',
+            strokeThickness: 4
+        })
+        .setOrigin(0.5)
+        .setDepth(6);
+
+        // 添加完成时间文本
+        const timeText = this.add.text(this.width/2, this.height * 0.75, 
+            `完成时间: ${this.gameTime}秒`, {
             fontSize: '24px',
-            fill: '#4A3000',
-            align: 'center',
-            lineSpacing: 10
-        }).setOrigin(0.5);
+            fill: '#FFFFFF'
+        })
+        .setOrigin(0.5)
+        .setDepth(6);
 
-        this.input.once('pointerdown', () => {
-            window.gameState.medals.agriculture = true;
+        // 添加按钮
+        const buttonY = this.height * 0.85;
+        const buttonSpacing = 150;
+
+        // 再试一次按钮
+        const tryAgainBtn = this.add.image(this.width/2 - buttonSpacing, buttonY, 'try-again-btn')
+            .setScale(0.8)
+            .setInteractive()
+            .setDepth(6);
+
+        // 其他游戏按钮
+        const otherGamesBtn = this.add.image(this.width/2 + buttonSpacing, buttonY, 'other-games-btn')
+            .setScale(0.8)
+            .setInteractive()
+            .setDepth(6);
+
+        // 添加按钮交互效果
+        [tryAgainBtn, otherGamesBtn].forEach(btn => {
+            btn.on('pointerover', () => {
+                btn.setScale(0.85);
+            });
+            btn.on('pointerout', () => {
+                btn.setScale(0.8);
+            });
+        });
+
+        // 修改再试一次按钮的点击事件
+        tryAgainBtn.on('pointerdown', () => {
+            // 直接重启当前场景
+            this.scene.restart();
+        });
+
+        otherGamesBtn.on('pointerdown', () => {
             this.scene.start('SceneSelectScene');
+        });
+
+        // 修改奖牌动画效果的缩放值
+        this.tweens.add({
+            targets: medalImage,
+            scale: { from: 0.2, to: 0.4 },  // 从 0.4->0.8 改为 0.2->0.4
+            duration: 1000,
+            ease: 'Back.out',
+            onComplete: () => {
+                // 添加闪光效果，同样调整缩放范围
+                this.tweens.add({
+                    targets: medalImage,
+                    scale: { from: 0.4, to: 0.425 },  // 从 0.8->0.85 改为 0.4->0.425
+                    duration: 1500,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
+                });
+            }
         });
     }
 
@@ -515,24 +619,6 @@ export default class AgricultureScene extends Phaser.Scene {
         });
     }
 
-    createBackButton() {
-        const backButton = this.add.container(100, 50);
-        const backBg = this.add.image(0, 0, 'button')
-            .setDisplaySize(120, 40);
-        const backText = this.add.text(0, 0, '返回', {
-            fontSize: '20px',
-            fill: '#ffffff'
-        }).setOrigin(0.5);
-        
-        backButton.add([backBg, backText]);
-        backButton.setSize(120, 40);
-        backButton.setInteractive();
-
-        backButton.on('pointerdown', () => {
-            this.scene.start('SceneSelectScene');
-        });
-    }
-
     showStartPrompt() {
         const overlay = this.add.graphics();
         overlay.fillStyle(0x000000, 0.7);
@@ -567,50 +653,23 @@ export default class AgricultureScene extends Phaser.Scene {
             overlay.destroy();
             messageBox.destroy();
             content.destroy();
+            
+            // 开始计时
+            this.gameStartTime = Date.now();
+            this.gameTimer = this.time.addEvent({
+                delay: 1000,
+                callback: this.updateTimer,
+                callbackScope: this,
+                loop: true
+            });
         });
     }
 
-    showCompletedScene() {
-        const overlay = this.add.graphics();
-        overlay.fillStyle(0x000000, 0.7);
-        overlay.fillRect(0, 0, this.width, this.height);
-
-        const messageBox = this.add.graphics();
-        messageBox.fillStyle(0xE6D5AC, 0.95);
-        messageBox.lineStyle(4, 0x8B4513);
-        messageBox.fillRoundedRect(this.width/2 - 300, this.height/2 - 150, 600, 300, 20);
-        messageBox.strokeRoundedRect(this.width/2 - 300, this.height/2 - 150, 600, 300, 20);
-
-        const content = this.add.text(this.width/2, this.height/2, 
-            '你已经完成了这个任务！\n\n' +
-            '要重新体验一次吗？\n\n' +
-            '点击确定重新开始，点击返回键返回选择界面', {
-            fontSize: '24px',
-            fill: '#4A3000',
-            align: 'center',
-            lineSpacing: 10
-        }).setOrigin(0.5);
-
-        // 添加确定按钮
-        const confirmButton = this.add.container(this.width/2, this.height/2 + 100);
-        const confirmBg = this.add.image(0, 0, 'button')
-            .setDisplaySize(200, 50);
-        const confirmText = this.add.text(0, 0, '重新开始', {
-            fontSize: '20px',
-            fill: '#ffffff'
-        }).setOrigin(0.5);
-        
-        confirmButton.add([confirmBg, confirmText]);
-        confirmButton.setSize(200, 50);
-        confirmButton.setInteractive();
-
-        confirmButton.on('pointerdown', () => {
-            overlay.destroy();
-            messageBox.destroy();
-            content.destroy();
-            confirmButton.destroy();
-            this.showStartPrompt();
-        });
+    updateTimer() {
+        if (this.isPlaying) {
+            this.gameTime = Math.floor((Date.now() - this.gameStartTime) / 1000);
+            this.timeText.setText(`时间: ${this.gameTime}秒`);
+        }
     }
 
     endGame() {
@@ -726,6 +785,12 @@ export default class AgricultureScene extends Phaser.Scene {
         this.load.image('popup-bg', 'images/common/popup-bg.png');
         this.load.image('try-again-btn', 'images/common/try-again.png');
         this.load.image('other-games-btn', 'images/common/other-games.png');
+
+        // 加载奖励相关资源
+        this.load.image('reward-bg', 'images/common/reward-bg.png');
+        this.load.image('gold', 'images/common/gold.png');
+        this.load.image('silver', 'images/common/silver.png');
+        this.load.image('bronze', 'images/common/bronze.png');
     }
 
     // 添加 resize 方法来处理窗口大小变化

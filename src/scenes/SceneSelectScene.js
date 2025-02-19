@@ -21,7 +21,7 @@ export default class SceneSelectScene extends Phaser.Scene {
     preload() {
         this.load.setBaseURL('assets/');
         // 加载场景选择界面的背景
-        this.load.image('scene-bg', 'images/common/main-bg.png');
+        this.load.image('scene-select-bg', 'images/common/main-bg.png');
         // 加载场景缩略图
         this.load.image('agriculture', 'images/scenes/agriculture/thumbnail.png');
         this.load.image('culture', 'images/scenes/culture/thumbnail.png');
@@ -31,94 +31,130 @@ export default class SceneSelectScene extends Phaser.Scene {
     }
 
     create() {
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
+        const width = this.scale.width;
+        const height = this.scale.height;
 
         // 添加背景
-        this.add.image(width/2, height/2, 'scene-bg')
-            .setDisplaySize(width, height);
+        this.add.image(width/2, height/2, 'scene-select-bg')
+            .setDisplaySize(width, height)
+            .setDepth(-1);
 
-        // 添加返回按钮
-        const backButton = this.add.image(80, 40, 'back')
-            .setScale(0.6)
-            .setInteractive()
-            .on('pointerdown', () => {
-                this.scene.start('CharacterSelectScene');
-            });
+        // 添加选中的角色
+        const characterType = window.gameState.character || 'female';
+        this.player = this.add.sprite(
+            width * 0.15,
+            height * 0.7,
+            characterType
+        )
+        .setScale(height * 0.001)
+        .setDepth(2);
 
-        // 添加选中的角色（左上角）
-        const selectedCharacter = this.add.image(150, 80, this.selectedCharacter)
-            .setScale(0.2);
-
-        // 添加角色浮动动画
-        this.tweens.add({
-            targets: selectedCharacter,
-            y: '+=10',
-            duration: 2000,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-        });
-
-        // 创建场景选择按钮
+        // 场景选择按钮的配置
         const scenes = [
-            { key: 'agriculture', sceneName: 'AgricultureScene' },
-            { key: 'culture', sceneName: 'CultureScene' },
-            { key: 'ecommerce', sceneName: 'EcommerceScene' }
+            { key: 'agriculture', title: '智慧农业', scene: 'AgricultureScene' },
+            { key: 'culture', title: '传统文化', scene: 'CultureScene' },
+            { key: 'ecommerce', title: '智慧商业', scene: 'EcommerceScene' }
         ];
 
-        // 计算水平布局的参数
-        const spacing = 50;
-        const cardWidth = 300; // 增加卡片宽度
-        const cardHeight = 200; // 设置固定高度
-        const totalWidth = (cardWidth * scenes.length) + (spacing * (scenes.length - 1));
-        const startX = (width - totalWidth) / 2 + cardWidth / 2;
-        const centerY = height / 2;
+        // 修改卡片尺寸和位置配置
+        const cardWidth = width * 0.18;     // 稍微窄一点
+        const cardHeight = height * 0.45;    // 更高
+        const spacing = width * 0.22;        // 增加间距
+        const startX = width * 0.35;
+        const startY = height * 0.48;        // 稍微往下一点
 
+        // 创建场景选择卡片
         scenes.forEach((scene, index) => {
-            const x = startX + (cardWidth + spacing) * index;
+            const container = this.add.container(startX + spacing * index, startY);
+
+            // 创建更强的3D效果
+            const card = this.add.graphics();
             
-            // 创建场景选择卡片
-            const container = this.add.container(x, centerY);
+            // 最底层阴影（营造悬浮感）
+            card.fillStyle(0x000000, 0.2);
+            card.fillRect(-cardWidth/2 + 15, -cardHeight/2 + 15, cardWidth, cardHeight);
+
+            // 侧面（加深的3D效果）
+            // 右侧面
+            card.fillStyle(0xcccccc);
+            card.fillRect(cardWidth/2, -cardHeight/2, 20, cardHeight);
+            // 渐变效果
+            for(let i = 0; i < 5; i++) {
+                card.fillStyle(0xdddddd, 0.8 - i * 0.15);
+                card.fillRect(cardWidth/2 + i * 4, -cardHeight/2, 4, cardHeight);
+            }
+
+            // 底部面
+            card.fillStyle(0xdddddd);
+            card.fillRect(-cardWidth/2, cardHeight/2, cardWidth, 20);
+            // 渐变效果
+            for(let i = 0; i < 5; i++) {
+                card.fillStyle(0xeeeeee, 0.8 - i * 0.15);
+                card.fillRect(-cardWidth/2, cardHeight/2 + i * 4, cardWidth, 4);
+            }
+
+            // 主面（使用多层矩形模拟渐变）
+            // 基础白色背景
+            card.fillStyle(0xffffff);
+            card.fillRect(-cardWidth/2, -cardHeight/2, cardWidth, cardHeight);
             
-            // 创建黑色半透明背景
-            const bg = this.add.rectangle(0, 0, cardWidth, cardHeight, 0x000000, 0.3)
-                .setOrigin(0.5);
+            // 使用半透明层模拟渐变
+            for(let i = 0; i < 10; i++) {
+                card.fillStyle(0xf0f0f0, i * 0.03);
+                card.fillRect(
+                    -cardWidth/2 + (i * cardWidth/10),
+                    -cardHeight/2 + (i * cardHeight/10),
+                    cardWidth - (i * cardWidth/10),
+                    cardHeight - (i * cardHeight/10)
+                );
+            }
+            
+            // 卡片边框
+            card.lineStyle(2, 0xaaaaaa);
+            card.strokeRect(-cardWidth/2, -cardHeight/2, cardWidth, cardHeight);
 
-            // 添加场景缩略图
-            const sceneImage = this.add.image(0, 0, scene.key)
-                .setDisplaySize(cardWidth - 20, cardHeight - 20);
+            // 预览图（调整位置和大小）
+            const preview = this.add.image(0, -cardHeight * 0.15, scene.key)
+                .setDisplaySize(cardWidth * 0.85, cardHeight * 0.6);
 
-            container.add([bg, sceneImage]);
-            container.setSize(cardWidth, cardHeight);
-            container.setInteractive();
+            // 标题（更新样式）
+            const title = this.add.text(0, cardHeight * 0.3, scene.title, {
+                fontSize: '28px',
+                fontWeight: 'bold',
+                fill: '#333333',
+                backgroundColor: '#ffffff90',
+                padding: { x: 20, y: 10 },
+                borderRadius: 5
+            }).setOrigin(0.5);
 
-            // 添加交互效果
+            // 增强悬停效果
             container.on('pointerover', () => {
                 this.tweens.add({
                     targets: container,
-                    scaleX: 1.1,
-                    scaleY: 1.1,
-                    y: centerY - 20,
-                    duration: 200,
+                    y: startY - 30,          // 更大的上浮距离
+                    scaleX: 1.08,            // 更大的放大效果
+                    scaleY: 1.08,
+                    rotation: 0.02,          // 轻微倾斜
+                    duration: 300,
                     ease: 'Back.easeOut'
                 });
-                bg.setAlpha(0.5);
             });
 
             container.on('pointerout', () => {
                 this.tweens.add({
                     targets: container,
+                    y: startY,
                     scaleX: 1,
                     scaleY: 1,
-                    y: centerY,
-                    duration: 200,
+                    rotation: 0,
+                    duration: 300,
                     ease: 'Back.easeOut'
                 });
-                bg.setAlpha(0.3);
             });
 
+            // 点击效果和场景切换
             container.on('pointerdown', () => {
+                // 点击动画
                 this.tweens.add({
                     targets: container,
                     scaleX: 0.95,
@@ -126,22 +162,58 @@ export default class SceneSelectScene extends Phaser.Scene {
                     duration: 100,
                     yoyo: true,
                     onComplete: () => {
-                        // 确保 gameState 中有正确的数据结构
-                        if (!window.gameState.medals) {
-                            window.gameState.medals = {
-                                agriculture: false,
-                                culture: false,
-                                ecommerce: false
-                            };
-                        }
-
-                        this.scene.start(scene.sceneName, { 
-                            character: this.selectedCharacter,
-                            medals: window.gameState.medals  // 传递奖牌状态
+                        // 添加过渡动画
+                        this.cameras.main.fade(500, 0, 0, 0, false, (camera, progress) => {
+                            if (progress === 1) {
+                                this.scene.start(scene.scene);
+                            }
                         });
                     }
                 });
             });
+
+            // 将所有元素添加到容器
+            container.add([card, preview, title]);
+            container.setDepth(1);
+            container.setSize(cardWidth, cardHeight);
+            container.setInteractive();
         });
+
+        // 添加返回按钮
+        const backButton = this.add.image(80, 40, 'back')
+            .setScale(0.6)
+            .setDepth(2)
+            .setInteractive()
+            .on('pointerover', () => {
+                this.tweens.add({
+                    targets: backButton,
+                    scale: 0.7,
+                    duration: 200
+                });
+            })
+            .on('pointerout', () => {
+                this.tweens.add({
+                    targets: backButton,
+                    scale: 0.6,
+                    duration: 200
+                });
+            })
+            .on('pointerdown', () => {
+                // 点击动画
+                this.tweens.add({
+                    targets: backButton,
+                    scale: 0.5,
+                    duration: 100,
+                    yoyo: true,
+                    onComplete: () => {
+                        // 添加过渡动画
+                        this.cameras.main.fade(500, 0, 0, 0, false, (camera, progress) => {
+                            if (progress === 1) {
+                                this.scene.start('CharacterSelectScene');  // 返回角色选择场景
+                            }
+                        });
+                    }
+                });
+            });
     }
 } 
