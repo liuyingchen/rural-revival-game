@@ -1,7 +1,7 @@
 // import Phaser from 'phaser';
 console.log('开始加载配置...');
 
-// 修改导入方式
+// 导入所有场景
 const BootScene = (await import('./scenes/BootScene.js')).default;
 const PreloadScene = (await import('./scenes/PreloadScene.js')).default;
 const CharacterSelectScene = (await import('./scenes/CharacterSelectScene.js')).default;
@@ -15,13 +15,21 @@ console.log('场景加载完成');
 
 const config = {
     type: Phaser.AUTO,
-    width: 1308,  // 修改为新图片的宽度
-    height: 736,  // 修改为新图片的高度
-    parent: 'game',
     scale: {
-        mode: Phaser.Scale.FIT,  // 自动适配屏幕
-        autoCenter: Phaser.Scale.CENTER_BOTH
+        mode: Phaser.Scale.RESIZE,
+        parent: 'game',
+        width: '100%',
+        height: '100%',
+        min: {
+            width: 800,
+            height: 600
+        },
+        max: {
+            width: 1920,
+            height: 1080
+        }
     },
+    backgroundColor: '#000000',
     scene: [
         BootScene,
         PreloadScene,
@@ -38,21 +46,21 @@ const config = {
             gravity: { y: 0 },
             debug: false
         }
-    },
-    audio: {
-        noAudio: true
     }
+};
+
+// 添加窗口大小变化监听
+window.addEventListener('resize', () => {
+    if (window.game) {
+        window.game.scale.resize(window.innerWidth, window.innerHeight);
+    }
+});
+
+// 创建全局游戏状态
+window.gameState = {
+    character: null
 };
 
 console.log('创建游戏实例...');
-new Phaser.Game(config);
+window.game = new Phaser.Game(config);
 console.log('游戏实例创建完成');
-
-window.gameState = {
-    character: null,
-    medals: {
-        ecommerce: false,
-        culture: false,
-        agriculture: false
-    }
-};

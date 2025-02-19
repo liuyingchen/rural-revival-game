@@ -24,6 +24,16 @@ export default class AgricultureScene extends Phaser.Scene {
 
         this.createField();
 
+        // 添加选中的角色（左侧）
+        const characterType = window.gameState.character || 'female';
+        this.player = this.add.sprite(
+            this.width * 0.2,  // 位于屏幕左侧20%处
+            this.height * 0.7,  // 位于屏幕70%高度处
+            characterType
+        )
+        .setScale(this.height * 0.001)  // 根据屏幕高度动态设置缩放
+        .setDepth(1);
+
         // 添加无人机
         this.airplane = this.add.sprite(this.width * 0.5, this.height * 0.9, 'airplane')
             .setScale(0.3)
@@ -54,7 +64,7 @@ export default class AgricultureScene extends Phaser.Scene {
         });
 
         // 确保在 preload 中加载 sparkle 图片
-        this.load.image('sparkle', 'assets/images/common/sparkle.png');
+        this.load.image('sparkle', 'images/common/sparkle.png');
 
         // 添加无人机提示动画
         this.addDroneHintAnimations();
@@ -688,5 +698,53 @@ export default class AgricultureScene extends Phaser.Scene {
             // 清空引用
             this.hintEffects = null;
         }
+    }
+
+    preload() {
+        this.load.setBaseURL('assets/');
+        
+        // 加载农业场景资源
+        this.load.image('agriculture-bg', 'images/scenes/agriculture/background.png');  // 背景图
+        this.load.image('airplane', 'images/scenes/agriculture/airplane.png');          // 无人机
+        this.load.image('field', 'images/scenes/agriculture/field.png');               // 农田
+        
+        // 加载通用资源
+        this.load.image('back', 'images/common/back.png');                             // 返回按钮
+        this.load.image('sparkle', 'images/common/sparkle.png');                       // 特效
+        
+        // 加载奖牌相关资源
+        this.load.image('gold-medal', 'images/common/gold.png');
+        this.load.image('silver-medal', 'images/common/silver.png');
+        this.load.image('bronze-medal', 'images/common/bronze.png');
+        this.load.image('popup-bg', 'images/common/popup-bg.png');
+        this.load.image('try-again-btn', 'images/common/try-again.png');
+        this.load.image('other-games-btn', 'images/common/other-games.png');
+    }
+
+    // 添加 resize 方法来处理窗口大小变化
+    resize() {
+        const width = this.scale.width;
+        const height = this.scale.height;
+
+        // 更新背景尺寸
+        this.children.list.forEach(child => {
+            if (child.texture && child.texture.key === 'agriculture-bg') {
+                child.setDisplaySize(width, height);
+            }
+        });
+
+        // 更新角色位置和大小
+        if (this.player) {
+            this.player.setPosition(width * 0.2, height * 0.7)
+                .setScale(height * 0.001);
+        }
+
+        // 更新无人机位置
+        if (this.airplane) {
+            this.airplane.setPosition(width * 0.5, height * 0.9);
+        }
+
+        // 更新农田遮罩
+        this.updateFieldMask();
     }
 }

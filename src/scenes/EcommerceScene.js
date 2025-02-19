@@ -15,86 +15,96 @@ export default class EcommerceScene extends Phaser.Scene {
     }
 
     create() {
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
+        const width = this.scale.width;
+        const height = this.scale.height;
 
-        // 添加背景
+        // 添加背景图并设置为全屏
         this.add.image(width/2, height/2, 'ecommerce-bg')
-            .setDisplaySize(width, height);
+            .setDisplaySize(width, height)
+            .setDepth(-1);
 
-        // 添加静态传送带
-        this.conveyor = this.add.image(
-            width * 0.65,    // 水平位置改为0.5，放在中间偏右位置
-            height * 0.75,   // 垂直位置改为0.7，与角色同高
-            'conveyor'
-        ).setScale(0.5);    // 放大一点以适应蓝色框的大小
-
-        // 添加选择的角色
+        // 首先放置角色，作为参考点
         const characterType = window.gameState.character || 'female';
         this.player = this.add.sprite(
-            width * 0.25,
-            height * 0.7,
+            width * 0.2,  // 调整到左侧20%处
+            height * 0.65,  // 调整到65%的高度
             characterType
-        ).setScale(0.8);
+        )
+        .setScale(height * 0.001)
+        .setDepth(2);  // 确保角色在最上层
 
-        // 添加打开状态的箱子（初始状态）
+        // 传送带位置和尺寸调整
+        this.conveyor = this.add.image(
+            width * 0.6,  // 中心点位于60%处
+            height * 0.75,  // 调整传送带高度
+            'conveyor'
+        )
+        .setDisplaySize(width * 0.8, height * 0.1)  // 增加传送带宽度到80%屏幕宽度
+        .setDepth(0);
+
+        // 调整箱子位置，使其位于角色脚下
         this.openBox = this.add.image(
-            this.conveyor.x - this.conveyor.width * 0.22,  // 保持位置不变
-            this.conveyor.y + 45,  // 保持位置不变
+            this.player.x + width * 0.02,  // 略微偏右
+            this.player.y + height * 0.08,  // 位于角色脚下
             'box-open'
-        ).setScale(0.4)
+        )
+        .setScale(height * 0.0006)
+        .setInteractive()
+        .setDepth(1);  // 确保箱子在角色和传送带之间
+
+        // 状态文本
+        this.timeText = this.add.text(width - 200, 20, 'Time: 0s', {
+            fontSize: Math.min(width, height) * 0.03 + 'px',  // 动态字体大小
+            fill: '#000',
+            backgroundColor: '#ffffff80',
+            padding: { x: 15, y: 8 }
+        }).setDepth(2);
+
+        this.boxText = this.add.text(width - 200, 70, `Box: ${this.boxCount}/${this.targetBoxCount}`, {
+            fontSize: Math.min(width, height) * 0.03 + 'px',  // 动态字体大小
+            fill: '#000',
+            backgroundColor: '#ffffff80',
+            padding: { x: 15, y: 8 }
+        }).setDepth(2);
+
+        // 修改返回按钮实现
+        const backButton = this.add.image(80, 40, 'back')
+            .setScale(0.6)
+            .setDepth(2)
             .setInteractive()
-            .on('pointerover', () => {
-                // 鼠标悬停效果
-                this.openBox.setTint(0x88ff88);
-            })
-            .on('pointerout', () => {
-                // 鼠标移出效果
-                this.openBox.clearTint();
+            .on('pointerdown', () => {
+                this.scene.start('SceneSelectScene');
             });
+
+        // 添加悬停效果
+        backButton.on('pointerover', () => {
+            backButton.setScale(0.65);
+        });
+
+        backButton.on('pointerout', () => {
+            backButton.setScale(0.6);
+        });
+
+        // 初始化键盘控制
+        this.cursors = this.input.keyboard.createCursorKeys();
 
         // 添加箱子的提示动画
         this.addBoxHintAnimations();
 
-        // 点击事件处理
+        // 添加箱子的点击事件
+        this.openBox.on('pointerover', () => {
+            this.openBox.setTint(0x88ff88);
+        });
+        
+        this.openBox.on('pointerout', () => {
+            this.openBox.clearTint();
+        });
+
         this.openBox.on('pointerdown', () => {
-            if (this.isPlaying && !this.isPackingAnimating) {  // 添加动画状态检查
+            if (this.isPlaying && !this.isPackingAnimating) {
                 this.sealAndMoveBox();
                 this.playPackingAnimation();
             }
-        });
-
-        // 添加键盘控制
-        this.cursors = this.input.keyboard.createCursorKeys();
-
-        // 创建状态文本（右上角）
-        this.timeText = this.add.text(this.cameras.main.width - 200, 20, 'Time: 0s', {
-            fontSize: '24px',
-            fill: '#000',
-            backgroundColor: '#ffffff80',
-            padding: { x: 10, y: 5 }
-        });
-
-        this.boxText = this.add.text(this.cameras.main.width - 200, 60, `Box: ${this.boxCount}/${this.targetBoxCount}`, {
-            fontSize: '24px',
-            fill: '#000',
-            backgroundColor: '#ffffff80',
-            padding: { x: 10, y: 5 }
-        });
-
-        // 添加返回按钮
-        const backButton = this.add.container(100, 50);
-        const backBg = this.add.image(0, 0, 'button').setDisplaySize(120, 40);
-        const backText = this.add.text(0, 0, '返回', {
-            fontSize: '20px',
-            fill: '#ffffff'
-        }).setOrigin(0.5);
-        backButton.add([backBg, backText]);
-        backButton.setSize(120, 40);
-        backButton.setInteractive();
-
-        backButton.on('pointerdown', () => {
-            this.scene.start('SceneSelectScene');
         });
 
         this.showStartPrompt();
@@ -545,8 +555,7 @@ export default class EcommerceScene extends Phaser.Scene {
 
     // 添加更新方法
     update() {
-        if (this.isPlaying) {
-            // 只保留角色移动逻辑
+        if (this.isPlaying && this.cursors) {  // 添加 this.cursors 检查
             if (this.cursors.left.isDown) {
                 this.player.x -= 4;
                 this.player.setFlipX(true);
@@ -621,20 +630,60 @@ export default class EcommerceScene extends Phaser.Scene {
                 circle.destroy();
                 flash.destroy();
                 // 重置箱子位置
-                this.openBox.y = this.conveyor.y + 45;
+                this.openBox.y = this.conveyor.y - this.conveyor.displayHeight * 0.3;
             }
         });
     }
 
     // 在 preload 中确保加载所需资源
     preload() {
-        // ... 其他加载 ...
-        this.load.image('gold-medal', 'assets/images/common/gold.png');
-        this.load.image('silver-medal', 'assets/images/common/silver.png');
-        this.load.image('bronze-medal', 'assets/images/common/bronze.png');
-        this.load.image('popup-bg', 'assets/images/common/popup-bg.png');  // 加载弹窗背景
-        this.load.image('try-again-btn', 'assets/images/common/try-again.png');
-        this.load.image('other-games-btn', 'assets/images/common/other-games.png');
-        this.load.image('sparkle', 'assets/images/common/sparkle.png');
+        this.load.setBaseURL('assets/');
+        
+        // 加载场景基础资源
+        this.load.image('ecommerce-bg', 'images/scenes/ecommerce/background.png');  // 背景图
+        this.load.image('box-open', 'images/scenes/ecommerce/box-open.png');        // 打开状态的箱子
+        this.load.image('box-closed', 'images/scenes/ecommerce/box-closed.png');    // 关闭状态的箱子
+        this.load.image('conveyor', 'images/scenes/ecommerce/conveyor.png');        // 传送带
+        
+        // 加载通用资源
+        this.load.image('back', 'images/common/back.png');                          // 返回按钮
+        this.load.image('button', 'images/common/button.png');                      // 按钮背景
+        
+        // 加载奖牌和完成界面相关资源
+        this.load.image('gold-medal', 'images/common/gold.png');
+        this.load.image('silver-medal', 'images/common/silver.png');
+        this.load.image('bronze-medal', 'images/common/bronze.png');
+        this.load.image('popup-bg', 'images/common/popup-bg.png');
+        this.load.image('try-again-btn', 'images/common/try-again.png');
+        this.load.image('other-games-btn', 'images/common/other-games.png');
+        this.load.image('sparkle', 'images/common/sparkle.png');
+    }
+
+    // 添加一个窗口大小变化的监听器
+    resize() {
+        const width = this.scale.width;
+        const height = this.scale.height;
+
+        // 更新角色位置和大小
+        this.player.setPosition(width * 0.2, height * 0.65)
+            .setScale(height * 0.001);
+
+        // 更新传送带位置和大小
+        this.conveyor.setPosition(width * 0.6, height * 0.75)
+            .setDisplaySize(width * 0.8, height * 0.1);
+
+        // 更新箱子位置和大小
+        this.openBox.setPosition(
+            this.player.x + width * 0.02,
+            this.player.y + height * 0.08
+        )
+        .setScale(height * 0.0006);
+
+        // 更新返回按钮位置
+        this.children.list.forEach(child => {
+            if (child.texture && child.texture.key === 'back') {
+                child.setPosition(80, 40);
+            }
+        });
     }
 }
