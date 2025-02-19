@@ -1,3 +1,5 @@
+import { playerManager } from '../managers/PlayerManager.js';
+
 export default class AgricultureScene extends Phaser.Scene {
     constructor() {
         super({ key: 'AgricultureScene' });
@@ -11,6 +13,11 @@ export default class AgricultureScene extends Phaser.Scene {
         this.lastEffectTime = 0;  // 上次效果生成时间
         this.isAirplaneFlying = false;  // 新增：标记无人机是否在飞行
         this.isFirstFlight = false;  // 添加首次飞行标记
+        this.medalTimes = {
+            gold: 30,
+            silver: 45,
+            bronze: 60
+        };
     }
 
     create() {
@@ -746,5 +753,25 @@ export default class AgricultureScene extends Phaser.Scene {
 
         // 更新农田遮罩
         this.updateFieldMask();
+    }
+
+    onGameComplete() {
+        const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
+        let medal = null;
+
+        // 根据完成时间确定奖牌
+        if (elapsed <= this.medalTimes.gold) {
+            medal = 'gold';
+        } else if (elapsed <= this.medalTimes.silver) {
+            medal = 'silver';
+        } else if (elapsed <= this.medalTimes.bronze) {
+            medal = 'bronze';
+        }
+
+        // 更新玩家奖励
+        playerManager.updateGameMedal('agriculture', medal);
+
+        // 显示完成消息
+        this.showCompletionMessage(medal);
     }
 }

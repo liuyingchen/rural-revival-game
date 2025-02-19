@@ -1,3 +1,5 @@
+import { playerManager } from '../managers/PlayerManager.js';
+
 export default class EcommerceScene extends Phaser.Scene {
     constructor() {
         super({ key: 'EcommerceScene' });
@@ -8,9 +10,9 @@ export default class EcommerceScene extends Phaser.Scene {
         this.isPackingAnimating = false;  // 添加角色动画状态标记
         // 添加奖牌时间标准
         this.medalTimes = {
-            gold: 25,    // 25秒内完成获得金牌
-            silver: 35,  // 35秒内完成获得银牌
-            bronze: 45   // 45秒内完成获得铜牌
+            gold: 30,    // 30秒内完成获得金牌
+            silver: 45,  // 45秒内完成获得银牌
+            bronze: 60   // 60秒内完成获得铜牌
         };
     }
 
@@ -383,7 +385,7 @@ export default class EcommerceScene extends Phaser.Scene {
                                             if (this.timer) {
                                                 this.timer.destroy();
                                             }
-                                            this.showCompletionMessage();
+                                            this.onGameComplete();
                                         }
                                     }
                                 });
@@ -405,23 +407,15 @@ export default class EcommerceScene extends Phaser.Scene {
         });
     }
 
-    showCompletionMessage() {
+    showCompletionMessage(medal) {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
         const completionTime = Math.floor((Date.now() - this.gameStartTime) / 1000);
         
-        // 确定获得的奖牌
-        let medalType = 'bronze';
-        if (completionTime <= this.medalTimes.gold) {
-            medalType = 'gold';
-        } else if (completionTime <= this.medalTimes.silver) {
-            medalType = 'silver';
-        }
-
         // 更新玩家奖牌状态
         if (!window.gameState.medals.ecommerce || 
-            this.getMedalValue(medalType) > this.getMedalValue(window.gameState.medals.ecommerce)) {
-            window.gameState.medals.ecommerce = medalType;
+            this.getMedalValue(medal) > this.getMedalValue(window.gameState.medals.ecommerce)) {
+            window.gameState.medals.ecommerce = medal;
         }
 
         // 创建黑色背景
@@ -448,7 +442,7 @@ export default class EcommerceScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         // 调整奖牌位置
-        const medal = this.add.image(width/2, height/2, `${medalType}-medal`)
+        const medalImage = this.add.image(width/2, height/2, `${medal}-medal`)
             .setScale(1.2);
 
         // 调整按钮位置
@@ -533,8 +527,8 @@ export default class EcommerceScene extends Phaser.Scene {
 
         // 添加奖牌动画效果
         this.tweens.add({
-            targets: medal,
-            y: medal.y - 15,
+            targets: medalImage,
+            y: medalImage.y - 15,
             duration: 1000,
             yoyo: true,
             repeat: -1,
@@ -685,5 +679,25 @@ export default class EcommerceScene extends Phaser.Scene {
                 child.setPosition(80, 40);
             }
         });
+    }
+
+    onGameComplete() {
+        const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
+        let medal = null;
+
+        // 根据完成时间确定奖牌
+        if (elapsed <= this.medalTimes.gold) {
+            medal = 'gold';
+        } else if (elapsed <= this.medalTimes.silver) {
+            medal = 'silver';
+        } else if (elapsed <= this.medalTimes.bronze) {
+            medal = 'bronze';
+        }
+
+        // 更新玩家奖励
+        playerManager.updateGameMedal('ecommerce', medal);
+
+        // 显示完成消息
+        this.showCompletionMessage(medal);
     }
 }

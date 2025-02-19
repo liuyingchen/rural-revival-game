@@ -37,11 +37,11 @@ class PlayerManager {
                         lastPlayed: null,
                         medal: null
                     },
-                    knowledge: {
+                    agriculture: {
                         lastPlayed: null,
                         medal: null
                     },
-                    tradition: {
+                    ecommerce: {
                         lastPlayed: null,
                         medal: null
                     }

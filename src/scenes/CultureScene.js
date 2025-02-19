@@ -1,4 +1,4 @@
-import { playerManager } from '../managers/PlayerManager';
+import { playerManager } from '../managers/PlayerManager.js'; 
 
 export default class CultureScene extends Phaser.Scene {
     constructor() {
