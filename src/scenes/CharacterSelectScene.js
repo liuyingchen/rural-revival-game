@@ -29,8 +29,8 @@ export default class CharacterSelectScene extends Phaser.Scene {
 
         // 角色配置
         const characters = [
-            { key: 'male', title: '男孩' },
-            { key: 'female', title: '女孩' }
+            { key: 'male', title: 'AMEER,karachi' },
+            { key: 'female', title: 'SARA,lahore' }
         ];
 
         // 设置卡片尺寸和位置

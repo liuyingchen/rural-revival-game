@@ -56,9 +56,9 @@ export default class SceneSelectScene extends Phaser.Scene {
 
         // 场景选择按钮的配置
         const scenes = [
-            { key: 'agriculture', title: '智慧农业', scene: 'AgricultureScene' },
-            { key: 'culture', title: '传统文化', scene: 'CultureScene' },
-            { key: 'ecommerce', title: '智慧商业', scene: 'EcommerceScene' }
+            { key: 'agriculture', title: 'Future Farm Click', scene: 'AgricultureScene' },
+            { key: 'culture', title: 'Time Travel Puzzle', scene: 'CultureScene' },
+            { key: 'ecommerce', title: 'Mountain Delivery Dash', scene: 'EcommerceScene' }
         ];
 
         // 修改卡片尺寸和位置配置

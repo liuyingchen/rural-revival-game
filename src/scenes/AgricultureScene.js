@@ -34,12 +34,11 @@ export default class AgricultureScene extends Phaser.Scene {
         // 添加选中的角色（保持在左侧）
         const characterType = window.gameState.character || 'female';
         this.player = this.add.sprite(
-            this.scale.width * 0.15,  // 水平位置在屏幕15%处
-            this.scale.height * 0.8,   // 垂直位置在屏幕70%处
+            this.scale.width * 0.10,  // 水平位置在屏幕10%处
+            this.scale.height * 0.75,  // 垂直位置保持不变
             characterType
-        )
-        .setScale(this.scale.height * 0.001)  // 根据屏幕高度设置缩放
-        .setDepth(99);  // 确保角色在最上层
+        ).setScale(this.scale.height*0.001)
+        .setDepth(99);
 
         // 添加无人机
         this.airplane = this.add.sprite(this.width * 0.5, this.height * 0.9, 'airplane')
@@ -671,87 +670,193 @@ export default class AgricultureScene extends Phaser.Scene {
     showWelcomeDialog() {
         // 创建半透明黑色背景
         const overlay = this.add.graphics()
-            .setDepth(98);  // 设置深度为98
+            .setDepth(98);
         overlay.fillStyle(0x000000, 0.7);
         overlay.fillRect(0, 0, this.scale.width, this.scale.height);
 
-        // 修改弹窗尺寸和位置
-        const boxWidth = this.scale.width * 0.9;     // 弹窗宽度为屏幕宽度的80%
-        const boxHeight = this.scale.height * 0.25;   // 弹窗高度为屏幕高度的25%
-        const boxY = this.scale.height * 0.75;        // 弹窗垂直位置在屏幕75%的位置
+        // 弹窗尺寸和位置
+        const boxWidth = this.scale.width * 0.8;     // 弹窗宽度改为屏幕宽度的80%
+        const boxHeight = this.scale.height * 0.25;   // 弹窗高度保持不变
+        const boxY = this.scale.height * 0.75;
 
         // 创建弹窗背景
         const messageBox = this.add.graphics()
-            .setDepth(98);  // 设置深度为98
+            .setDepth(98);
         messageBox.fillStyle(0xE6D5AC, 0.95);
         messageBox.lineStyle(4, 0x8B4513);
         messageBox.fillRoundedRect(
-            this.scale.width/2 - boxWidth/2, 
-            boxY - boxHeight/2, 
-            boxWidth, 
-            boxHeight, 
+            this.scale.width/2 - boxWidth/2,
+            boxY - boxHeight/2,
+            boxWidth,
+            boxHeight,
             20
         );
         messageBox.strokeRoundedRect(
-            this.scale.width/2 - boxWidth/2, 
-            boxY - boxHeight/2, 
-            boxWidth, 
-            boxHeight, 
+            this.scale.width/2 - boxWidth/2,
+            boxY - boxHeight/2,
+            boxWidth,
+            boxHeight,
             20
         );
 
-        // 确保角色在弹窗前面
-        if (this.player) {
-            this.player.setDepth(99);  // 设置角色深度为99，确保在弹窗之上
-        }
-
-        // 创建文本对象（设置深度为98，与弹窗同层）
-        const textLines = [
-            '欢迎来到现代化农业示范基地！',
-            '你将操控智能无人机进行农田管理。',
-            '点击无人机起飞后，快速点击屏幕进行浇水和施肥。',
-            '准备好了吗？点击任意位置开始！'
+        // 文本内容 - 分成三段
+        const allTextLines = [
+            "Dear Pakistani friend, welcome to China's Modern Agricultural Base!",
+            "Operate a Chinese agricultural drone, tap targets on screen, and complete precision tasks across 300 acres. Experience how technology drives sustainable farming.",
+            "Let's cultivate tomorrow's fields today!"
         ];
 
+        // 创建文本容器和遮罩
+        const textContainer = this.add.container(0, 0).setDepth(99);
+        const textMask = this.add.graphics()
+            .fillStyle(0xffffff)
+            .fillRect(
+                this.scale.width/2 - boxWidth/2,
+                boxY - boxHeight/2,
+                boxWidth,
+                boxHeight
+            );
+        textContainer.setMask(new Phaser.Display.Masks.GeometryMask(this, textMask));
+
+        // 创建4个固定的文本对象
         const textObjects = [];
-        const startY = boxY - boxHeight/2 + 40;
-        const lineSpacing = 30;
+        const maxLines = 4;
+        const startY = boxY - boxHeight/2 + 25;
+        const lineSpacing = boxHeight / 5;
+        let currentStartIndex = 0;
 
-        textLines.forEach((line, index) => {
+        // 创建文本对象 - 修改对齐方式
+        for (let i = 0; i < maxLines; i++) {
             const text = this.add.text(
-                this.scale.width/2, 
-                startY + index * lineSpacing,
-                line,
+                this.scale.width/2 - boxWidth/2 + 40,  // 左对齐，留出边距
+                startY + i * lineSpacing,
+                '',
                 {
-                    fontSize: '24px',
+                    fontSize: '20px',
                     fill: '#4A3000',
-                    align: 'center'
-                }
-            )
-            .setOrigin(0.5)
-            .setAlpha(0)
-            .setDepth(98);  // 设置文本深度为98
-
-            textObjects.push(text);
-        });
-
-        // 为每行文本添加渐入动画，并实现逐行显示效果
-        textObjects.forEach((textObj, index) => {
-            this.tweens.add({
-                targets: textObj,
-                alpha: { from: 0, to: 1 },
-                y: { from: textObj.y + 20, to: textObj.y },
-                duration: 500,
-                ease: 'Power2',
-                delay: index * 500,  // 每行延迟显示
-                onComplete: () => {
-                    // 如果不是最后一行，开始下一行的显示
-                    if (index < textObjects.length - 1) {
-                        textObjects[index + 1].setVisible(true);
+                    align: 'left',  // 改为左对齐
+                    wordWrap: { 
+                        width: boxWidth - 80,
+                        useAdvancedWrap: true
                     }
                 }
+            )
+            .setOrigin(0, 0.5)  // x轴原点设为0，实现左对齐
+            .setAlpha(1);
+
+            textObjects.push(text);
+            textContainer.add(text);
+        }
+
+        // 获取换行后的所有文本行
+        let allWrappedLines = [];
+        allTextLines.forEach(paragraph => {
+            const tempText = this.add.text(-1000, -1000, paragraph, {
+                fontSize: '20px',
+                wordWrap: { width: boxWidth - 80, useAdvancedWrap: true }
             });
+            allWrappedLines = allWrappedLines.concat(tempText.getWrappedText());
+            tempText.destroy();
         });
+
+        // 打字机效果 - 单行文本显示
+        const typewriterEffect = (textObject, fullText) => {
+            return new Promise((resolve) => {
+                let currentText = '';
+                let currentIndex = 0;
+                
+                const timer = this.time.addEvent({
+                    delay: 20,  // 打字速度再快一点，从30ms改为20ms
+                    callback: () => {
+                        if (currentIndex < fullText.length) {
+                            currentText += fullText[currentIndex];
+                            textObject.setText(currentText);
+                            currentIndex++;
+                        } else {
+                            timer.destroy();
+                            // 添加一个短暂延迟确保文本完全显示
+                            setTimeout(resolve, 100);
+                        }
+                    },
+                    loop: true
+                });
+            });
+        };
+
+        // 逐行显示文本
+        const showTextLineByLine = async () => {
+            // 先清空所有文本
+            textObjects.forEach(textObj => textObj.setText(''));
+            
+            // 严格按顺序显示每一行
+            for (let i = 0; i < maxLines; i++) {
+                const line = allWrappedLines[currentStartIndex + i] || '';
+                if (line) {
+                    await typewriterEffect(textObjects[i], line);
+                }
+            }
+            
+            // 所有行都显示完成后，如果有更多行才开始滚动效果
+            if (allWrappedLines.length > maxLines) {
+                await new Promise(resolve => setTimeout(resolve, 200)); // 等待200ms后开始滚动
+                startScrolling();
+            }
+        };
+
+        // 滚动到下一组文本
+        const scrollToNextLines = async () => {
+            currentStartIndex++;
+            if (currentStartIndex < allWrappedLines.length - maxLines + 1) {
+                // 检查第一个文本对象是否存在
+                if (!textObjects[0] || !textObjects[0].scene) return;
+
+                // 只滚动第一行
+                await new Promise((resolve) => {
+                    this.tweens.add({
+                        targets: textObjects[0],
+                        y: textObjects[0].y - lineSpacing,
+                        duration: 200,
+                        ease: 'Cubic.easeInOut',
+                        onComplete: () => setTimeout(resolve, 100)  // 添加短暂延迟
+                    });
+                });
+
+                // 其他行向上移动一格
+                for (let i = 0; i < maxLines - 1; i++) {
+                    // 检查文本对象是否存在
+                    if (textObjects[i] && textObjects[i].scene && textObjects[i + 1] && textObjects[i + 1].scene) {
+                        textObjects[i].setText(textObjects[i + 1].text);
+                        textObjects[i].y = startY + i * lineSpacing;
+                    }
+                }
+
+                // 最后一行清空并重置位置
+                if (textObjects[maxLines - 1] && textObjects[maxLines - 1].scene) {
+                    textObjects[maxLines - 1].setText('');
+                    textObjects[maxLines - 1].y = startY + (maxLines - 1) * lineSpacing;
+
+                    // 显示新的一行
+                    const newLine = allWrappedLines[currentStartIndex + maxLines - 1];
+                    if (newLine) {
+                        await typewriterEffect(textObjects[maxLines - 1], newLine);
+                        // 等待一下确保文本完全显示
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                }
+            }
+        };
+
+        // 开始滚动效果
+        const startScrolling = () => {
+            this.time.addEvent({
+                delay: 300,  // 从200ms改为300ms，给打字效果更多时间
+                callback: scrollToNextLines,
+                loop: true
+            });
+        };
+
+        // 开始初始显示
+        showTextLineByLine();
 
         // 创建并播放背景音乐
         try {
@@ -759,90 +864,48 @@ export default class AgricultureScene extends Phaser.Scene {
                 loop: true,
                 volume: 0.5
             });
-
-            // 创建一个隐藏的按钮来触发音频
-            const hiddenButton = document.createElement('button');
-            hiddenButton.style.position = 'absolute';
-            hiddenButton.style.top = '0';
-            hiddenButton.style.left = '0';
-            hiddenButton.style.width = '100%';
-            hiddenButton.style.height = '100%';
-            hiddenButton.style.opacity = '0';
-            hiddenButton.style.cursor = 'default';
-            document.body.appendChild(hiddenButton);
-
-            const resumeAudioContext = () => {
-                const context = this.sound.context;
-                if (context.state === 'suspended') {
-                    context.resume();
-                }
-                this.bgm.play();
-                document.body.removeChild(hiddenButton);
-            };
-
-            hiddenButton.addEventListener('click', resumeAudioContext);
-            requestAnimationFrame(() => {
-                hiddenButton.dispatchEvent(new MouseEvent('click', {
-                    view: window,
-                    bubbles: true,
-                    cancelable: true
-                }));
-            });
+            this.bgm.play();
         } catch (error) {
             console.error('Failed to load or play audio:', error);
         }
 
-        // 点击任意位置关闭弹窗
-        const closeDialog = () => {
-            // 文本淡出动画
-            textObjects.forEach((textObj, index) => {
-                this.tweens.add({
-                    targets: textObj,
-                    alpha: 0,
-                    y: textObj.y + 10,
-                    duration: 300,
-                    ease: 'Power2',
-                    delay: index * 100
-                });
+        // 点击任意位置关闭弹窗并开始游戏
+        this.input.once('pointerdown', () => {
+            // 停止所有计时器和动画
+            this.time.removeAllEvents();
+            this.tweens.killAll();
+
+            // 清理所有对象
+            messageBox.destroy();
+            overlay.destroy();
+            textContainer.destroy();
+            textMask.destroy();
+            textObjects.forEach(text => {
+                if (text && text.scene) text.destroy();
             });
 
-            // 弹窗和阴影背景淡出动画
-            this.tweens.add({
-                targets: [messageBox, overlay],  // 同时处理弹窗和阴影
-                alpha: 0,
-                duration: 300,
-                ease: 'Power2',
-                delay: textObjects.length * 100,
-                onComplete: () => {
-                    // 清理所有元素
-                    messageBox.destroy();
-                    overlay.destroy();
-                    textObjects.forEach(text => text.destroy());
-                    
-                    // 开始游戏
-                    this.isPlaying = true;
-                    this.isAirplaneFlying = false;
-                    this.isFirstFlight = false;
-                    this.clickCount = 0;
-                    this.fieldProgress = 0;
-                    this.updateFieldMask();
-                    
-                    // 开始计时
-                    this.gameStartTime = Date.now();
-                    this.gameTimer = this.time.addEvent({
-                        delay: 1000,
-                        callback: this.updateTimer,
-                        callbackScope: this,
-                        loop: true
-                    });
-                }
+            // 重置并初始化游戏状态
+            this.isPlaying = true;
+            this.isAirplaneFlying = false;
+            this.isFirstFlight = true;  // 确保这个状态被正确设置
+            this.clickCount = 0;
+            this.fieldProgress = 0;
+            this.updateFieldMask();
+
+            // 开始计时
+            this.gameStartTime = Date.now();
+            this.gameTimer = this.time.addEvent({
+                delay: 1000,
+                callback: this.updateTimer,
+                callbackScope: this,
+                loop: true
             });
 
-            // 移除点击事件
-            this.input.off('pointerdown', closeDialog);
-        };
-
-        this.input.on('pointerdown', closeDialog);
+            // 确保无人机可以交互
+            if (this.airplane) {
+                this.airplane.setInteractive();
+            }
+        });
     }
 
     updateTimer() {
@@ -1013,7 +1076,7 @@ export default class AgricultureScene extends Phaser.Scene {
 
         // 更新角色位置和大小
         if (this.player) {
-            this.player.setPosition(width * 0.15, height * 0.7)
+            this.player.setPosition(width * 0.10, height * 0.75)
                 .setScale(height * 0.001);
         }
 
