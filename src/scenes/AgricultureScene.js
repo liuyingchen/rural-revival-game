@@ -45,12 +45,46 @@ export default class AgricultureScene extends Phaser.Scene {
             .setScale(0.3)
             .setDepth(1);
 
-        // 添加返回按钮（只保留这一个）
+        // 修改返回按钮的处理
         const backButton = this.add.image(80, 40, 'back')
             .setScale(0.6)
             .setDepth(2)
             .setInteractive()
             .on('pointerdown', () => {
+                // 停止所有音频
+                if (this.bgm) {
+                    this.bgm.stop();
+                    this.bgm.destroy();
+                    this.bgm = null;
+                }
+                if (this.flySound) {
+                    this.flySound.stop();
+                    this.flySound.destroy();
+                    this.flySound = null;
+                }
+                if (this.currentActionSound) {
+                    this.currentActionSound.stop();
+                    this.currentActionSound.destroy();
+                    this.currentActionSound = null;
+                }
+
+                // 停止所有计时器和动画
+                this.time.removeAllEvents();
+                this.tweens.killAll();
+
+                // 清理所有粒子效果
+                this.game.events.emit('clear-particles');
+
+                // 重置游戏状态
+                this.isPlaying = false;
+                this.isAirplaneFlying = false;
+                this.clickCount = 0;
+                this.fieldProgress = 0;
+
+                // 清理提示效果
+                this.clearHintEffects();
+
+                // 返回到场景选择界面
                 this.scene.start('SceneSelectScene');
             });
         
@@ -81,7 +115,7 @@ export default class AgricultureScene extends Phaser.Scene {
         this.addDroneHintAnimations();
 
         // 添加时间显示
-        this.timeText = this.add.text(this.width - 150, 20, '时间: 0秒', {
+        this.timeText = this.add.text(this.width - 150, 20, 'Time: 0s', {
             fontSize: '24px',
             fill: '#000',
             backgroundColor: '#ffffff80',
@@ -123,12 +157,9 @@ export default class AgricultureScene extends Phaser.Scene {
             }
         });
         
-        // 创建浇水或施肥效果
-        if (Math.random() < 0.5) {
-            this.createWaterEffect(this.airplane.x, this.airplane.y + 20);
-        } else {
-            this.createFertilizeEffect(this.airplane.x, this.airplane.y + 20);
-        }
+        // 创建浇水效果
+        //this.createWaterEffect(this.airplane.x, this.airplane.y + 20);
+        this.createWaterSplash(this.airplane.x, this.airplane.y + 20);
 
         this.fieldProgress = Math.min(this.clickCount / this.targetClicks, 1);
         this.updateFieldMask();
@@ -194,7 +225,7 @@ export default class AgricultureScene extends Phaser.Scene {
                     targets: this.airplane,
                     x: target.x,
                     y: target.y,
-                    duration: distance * 3,
+                    duration: distance * 5,  // 当前速度：每像素3毫秒
                     ease: 'Sine.easeInOut',
                     onComplete: () => {
                         if (this.isPlaying) {
@@ -265,7 +296,7 @@ export default class AgricultureScene extends Phaser.Scene {
 
         // 添加完成时间文本
         const timeText = this.add.text(this.width/2, this.height * 0.75, 
-            `完成时间: ${this.gameTime}秒`, {
+            `Times: ${this.gameTime}s`, {
             fontSize: '24px',
             fill: '#FFFFFF'
         })
@@ -503,82 +534,115 @@ export default class AgricultureScene extends Phaser.Scene {
     }
 
     createWaterEffect(x, y) {
-        // 增加到12个水滴
-        for (let i = 0; i < 12; i++) {
-            const drop = this.add.graphics();
-            const dropSize = Phaser.Math.FloatBetween(3, 4);
-            
-            drop.clear();
-            drop.fillStyle(0x4444ff, 0.8);
-            drop.fillEllipse(0, 0, dropSize, dropSize * 1.5);
-            
-            // 设置水滴初始位置
-            drop.x = x + Phaser.Math.Between(-30, 30);
-            drop.y = y + Phaser.Math.Between(-8, 8);
-            
-            // 修改下落动画，模拟自由落体
-            const targetY = y + this.height * 0.6;  // 延长下落距离到底部1/4处
-            const duration = 1000;  // 增加下落时间
+        // 创建粒子发射器
+        const particles = this.add.particles(x, y, 'water-particle', {
+            // 粒子的基本属性
+            speed: { min: 100, max: 200 },        // 粒子速度范围
+            angle: { min: 75, max: 105 },         // 喷洒角度范围（略微扩散）
+            scale: { start: 0.4, end: 0.1 },      // 粒子大小变化
+            alpha: { start: 0.6, end: 0 },        // 透明度变化
+            lifespan: 1000,                       // 粒子生命周期
+            quantity: 8,                          // 每次发射的粒子数量
+            frequency: 20,                        // 发射频率（毫秒）
+            gravityY: 300,                        // 重力效果
+            maxParticles: 50,                     // 最大粒子数
+            deathZone: {                          // 粒子消失区域
+                type: 'onEnter',
+                source: new Phaser.Geom.Rectangle(
+                    0,
+                    this.scale.height * 0.75,     // 在屏幕75%高度处消失
+                    this.scale.width,
+                    10
+                )
+            },
+            emitting: false                       // 初始不发射
+        });
 
-            this.tweens.add({
-                targets: drop,
-                y: {
-                    value: targetY,
-                    duration: duration,
-                    ease: 'Quad.in'  // 使用 Quad.in 更好地模拟重力加速
-                },
-                x: {
-                    value: drop.x + Phaser.Math.Between(-3, 3),  // 减少水平移动
-                    duration: duration,
-                    ease: 'Linear'
-                },
-                alpha: {
-                    value: 0,
-                    duration: duration * 0.3,  // 缩短消失时间
-                    ease: 'Linear',
-                    delay: duration * 0.7  // 延迟到接近底部才开始消失
-                },
-                onComplete: () => {
-                    drop.destroy();
-                }
+        // 开始发射粒子
+        particles.start();
+
+        // 500ms后停止发射并销毁
+        this.time.delayedCall(500, () => {
+            particles.stop();
+            this.time.delayedCall(1000, () => {
+                particles.destroy();
             });
-        }
+        });
     }
 
     createWaterSplash(x, y) {
-        // 创建更大的水花效果
-        const splash = this.add.graphics();
-        splash.fillStyle(0x4A90E2, 0.4);
-        
-        const radius = 5;
-        splash.fillCircle(x, y, radius);
-        
-        // 添加波纹效果
-        for (let i = 0; i < 3; i++) {
-            const ripple = this.add.graphics();
-            ripple.lineStyle(1, 0x4A90E2, 0.3);
-            ripple.strokeCircle(x, y, radius);
+        // 创建粒子发射器
+        const particles = this.add.particles(x, y, 'water-drop', {
+            // 基本配置
+            gravityY: 500,                    // 增加重力效果
+            scale: { start: 0.3, end: 0.1 },  // 调整水滴大小
+            alpha: { start: 0.8, end: 0.2 },  // 增加初始透明度
             
-            this.tweens.add({
-                targets: ripple,
-                scaleX: 2 + i,
-                scaleY: 0.5,
-                alpha: 0,
-                duration: 400 + i * 100,
-                ease: 'Quad.out',
-                onComplete: () => ripple.destroy()
+            // 扇形喷射配置
+            angle: { min: 85, max: 95 },      // 缩小喷射角度范围
+            speed: { min: 200, max: 300 },    // 增加初始速度
+            
+            // 发射配置
+            frequency: 5,                      // 更频繁的发射
+            lifespan: 800,                    // 缩短生命周期
+            quantity: 5,                      // 增加每次发射的粒子数
+            
+            // 粒子区域
+            emitZone: {
+                type: 'random',
+                source: new Phaser.Geom.Line(-30, 0, 30, 0), // 扩大发射区域
+            },
+            
+            // 死亡区域（地面）
+            deathZone: {
+                type: 'onEnter',
+                source: new Phaser.Geom.Rectangle(
+                    0,
+                    this.scale.height * 0.75,
+                    this.scale.width,
+                    10
+                )
+            },
+            deathCallback: (particle) => {
+                this.createWaterImpact(particle.x, particle.y);
+            }
+        });
+
+        // 发射时间缩短到300ms
+        this.time.delayedCall(300, () => {
+            particles.stop();
+            this.time.delayedCall(300, () => {
+                particles.destroy();
             });
-        }
+        });
+    }
+
+    // 水滴落地效果
+    createWaterImpact(x, y) {
+        // 创建水花效果
+        const splash = this.add.circle(x, y, 3, 0x4A90E2, 0.4);
         
-        // 主水花消失
+        // 水花扩散动画
         this.tweens.add({
             targets: splash,
-            scaleX: 3,
-            scaleY: 0.4,
-            alpha: 0,
-            duration: 300,
+            scale: { from: 0.5, to: 2 },
+            alpha: { from: 0.4, to: 0 },
+            duration: 500,
             ease: 'Quad.out',
             onComplete: () => splash.destroy()
+        });
+
+        // 创建水渍效果
+        const waterMark = this.add.circle(x, y, 5, 0x4A90E2, 0.2);
+        
+        // 水渍扩散和消失动画
+        this.tweens.add({
+            targets: waterMark,
+            scale: { from: 1, to: 3 },
+            alpha: { from: 0.2, to: 0 },
+            duration: 1000,
+            ease: 'Quad.out',
+            onComplete: () => waterMark.destroy()
         });
     }
 
@@ -911,7 +975,7 @@ export default class AgricultureScene extends Phaser.Scene {
     updateTimer() {
         if (this.isPlaying) {
             this.gameTime = Math.floor((Date.now() - this.gameStartTime) / 1000);
-            this.timeText.setText(`时间: ${this.gameTime}秒`);
+            this.timeText.setText(`Times: ${this.gameTime}s`);
         }
     }
 
@@ -1060,6 +1124,9 @@ export default class AgricultureScene extends Phaser.Scene {
         this.load.image('gold', 'images/common/gold.png');
         this.load.image('silver', 'images/common/silver.png');
         this.load.image('bronze', 'images/common/bronze.png');
+
+        // 加载水滴图片
+        this.load.image('water-drop', 'images/scenes/agriculture/water-drop.png');
     }
 
     // 添加 resize 方法来处理窗口大小变化
