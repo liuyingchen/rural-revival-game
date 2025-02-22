@@ -12,6 +12,8 @@ export default class CharacterSelectScene extends Phaser.Scene {
         this.load.image('female', 'images/characters/female.png');
         // 加载返回按钮
         this.load.image('back', 'images/common/back.png');
+        // 加载点击音效
+        this.load.audio('click', 'audio/click.mp3');
     }
 
     create() {
@@ -21,6 +23,9 @@ export default class CharacterSelectScene extends Phaser.Scene {
         // 添加背景
         this.add.image(width/2, height/2, 'main-bg')
             .setDisplaySize(width, height);
+
+        // 创建点击音效
+        this.clickSound = this.sound.add('click', { volume: 0.8 });
 
         // 角色配置
         const characters = [
@@ -130,6 +135,9 @@ export default class CharacterSelectScene extends Phaser.Scene {
 
             // 点击效果
             container.on('pointerdown', () => {
+                // 播放点击音效
+                this.clickSound.play();
+                
                 this.tweens.add({
                     targets: container,
                     scaleX: 0.95,
@@ -168,22 +176,29 @@ export default class CharacterSelectScene extends Phaser.Scene {
                 });
             })
             .on('pointerdown', () => {
-                // 点击动画
+                // 播放点击音效
+                this.clickSound.play();
+                
                 this.tweens.add({
                     targets: backButton,
                     scale: 0.5,
                     duration: 100,
                     yoyo: true,
                     onComplete: () => {
-                        // 添加过渡动画
                         this.cameras.main.fade(500, 0, 0, 0, false, (camera, progress) => {
                             if (progress === 1) {
-                                // 返回首页
                                 window.location.href = './index.html';
                             }
                         });
                     }
                 });
             });
+    }
+
+    // 场景关闭时清理音效
+    shutdown() {
+        if (this.clickSound) {
+            this.clickSound.destroy();
+        }
     }
 }

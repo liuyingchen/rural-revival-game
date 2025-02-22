@@ -28,6 +28,8 @@ export default class SceneSelectScene extends Phaser.Scene {
         this.load.image('ecommerce', 'images/scenes/ecommerce/thumbnail.png');
         // 加载返回按钮
         this.load.image('back', 'images/common/back.png');
+        // 加载点击音效
+        this.load.audio('click', 'audio/click.mp3');
     }
 
     create() {
@@ -38,6 +40,9 @@ export default class SceneSelectScene extends Phaser.Scene {
         this.add.image(width/2, height/2, 'scene-select-bg')
             .setDisplaySize(width, height)
             .setDepth(-1);
+
+        // 创建点击音效
+        this.clickSound = this.sound.add('click', { volume: 0.8 });
 
         // 添加选中的角色
         const characterType = window.gameState.character || 'female';
@@ -154,6 +159,9 @@ export default class SceneSelectScene extends Phaser.Scene {
 
             // 点击效果和场景切换
             container.on('pointerdown', () => {
+                // 播放点击音效
+                this.clickSound.play();
+                
                 // 点击动画
                 this.tweens.add({
                     targets: container,
@@ -162,7 +170,6 @@ export default class SceneSelectScene extends Phaser.Scene {
                     duration: 100,
                     yoyo: true,
                     onComplete: () => {
-                        // 添加过渡动画
                         this.cameras.main.fade(500, 0, 0, 0, false, (camera, progress) => {
                             if (progress === 1) {
                                 this.scene.start(scene.scene);
@@ -199,21 +206,29 @@ export default class SceneSelectScene extends Phaser.Scene {
                 });
             })
             .on('pointerdown', () => {
-                // 点击动画
+                // 播放点击音效
+                this.clickSound.play();
+                
                 this.tweens.add({
                     targets: backButton,
                     scale: 0.5,
                     duration: 100,
                     yoyo: true,
                     onComplete: () => {
-                        // 添加过渡动画
                         this.cameras.main.fade(500, 0, 0, 0, false, (camera, progress) => {
                             if (progress === 1) {
-                                this.scene.start('CharacterSelectScene');  // 返回角色选择场景
+                                this.scene.start('CharacterSelectScene');
                             }
                         });
                     }
                 });
             });
+    }
+
+    // 场景关闭时清理音效
+    shutdown() {
+        if (this.clickSound) {
+            this.clickSound.destroy();
+        }
     }
 } 

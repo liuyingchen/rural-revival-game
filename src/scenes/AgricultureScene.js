@@ -31,15 +31,15 @@ export default class AgricultureScene extends Phaser.Scene {
 
         this.createField();
 
-        // 添加选中的角色（左侧）
+        // 添加选中的角色（保持在左侧）
         const characterType = window.gameState.character || 'female';
         this.player = this.add.sprite(
-            this.width * 0.2,  // 位于屏幕左侧20%处
-            this.height * 0.7,  // 位于屏幕70%高度处
+            this.scale.width * 0.15,  // 水平位置在屏幕15%处
+            this.scale.height * 0.8,   // 垂直位置在屏幕70%处
             characterType
         )
-        .setScale(this.height * 0.001)  // 根据屏幕高度动态设置缩放
-        .setDepth(1);
+        .setScale(this.scale.height * 0.001)  // 根据屏幕高度设置缩放
+        .setDepth(99);  // 确保角色在最上层
 
         // 添加无人机
         this.airplane = this.add.sprite(this.width * 0.5, this.height * 0.9, 'airplane')
@@ -63,8 +63,10 @@ export default class AgricultureScene extends Phaser.Scene {
         
         this.addAirplaneHintEffects();
         
-        // 移除对已完成状态的检查，直接显示开始提示
-        this.showStartPrompt();
+        // 延迟2秒后显示弹窗
+        this.time.delayedCall(1000, () => {
+            this.showWelcomeDialog();
+        });
 
         // 添加点击监听
         this.input.on('pointerdown', (pointer) => {
@@ -74,7 +76,7 @@ export default class AgricultureScene extends Phaser.Scene {
         });
 
         // 确保在 preload 中加载 sparkle 图片
-        this.load.image('sparkle', 'images/common/sparkle.png');
+    
 
         // 添加无人机提示动画
         this.addDroneHintAnimations();
@@ -98,23 +100,58 @@ export default class AgricultureScene extends Phaser.Scene {
             return;
         }
 
-        const now = Date.now();
-        if (now - this.lastEffectTime > 50) {
-            this.clickCount++;
-            this.lastEffectTime = now;
-            
-            if (Math.random() < 0.5) {
-                this.createWaterEffect(this.airplane.x, this.airplane.y + 20);
-            } else {
-                this.createFertilizeEffect(this.airplane.x, this.airplane.y + 20);
+        this.clickCount++;
+        this.lastEffectTime = Date.now();
+        
+        // 如果有正在播放的操作音效，先停止它
+        if (this.currentActionSound) {
+            this.currentActionSound.stop();
+            this.currentActionSound.destroy();
+        }
+        
+        // 播放新的操作音效
+        this.currentActionSound = this.sound.add('action', { 
+            volume: 0.6,
+            loop: false
+        });
+        this.currentActionSound.play();
+        
+        // 音效播放完成后清理资源
+        this.currentActionSound.once('complete', () => {
+            if (this.currentActionSound) {
+                this.currentActionSound.destroy();
+                this.currentActionSound = null;
             }
+        });
+        
+        // 创建浇水或施肥效果
+        if (Math.random() < 0.5) {
+            this.createWaterEffect(this.airplane.x, this.airplane.y + 20);
+        } else {
+            this.createFertilizeEffect(this.airplane.x, this.airplane.y + 20);
+        }
 
-            this.fieldProgress = Math.min(this.clickCount / this.targetClicks, 1);
-            this.updateFieldMask();
+        this.fieldProgress = Math.min(this.clickCount / this.targetClicks, 1);
+        this.updateFieldMask();
 
-            if (this.clickCount >= this.targetClicks) {
-                this.showCompletionMessage();
+        if (this.clickCount >= this.targetClicks) {
+            // 停止所有其他音效
+            if (this.bgm) {
+                this.bgm.stop();
+                this.bgm.destroy();
+                this.bgm = null;
             }
+            if (this.currentActionSound) {
+                this.currentActionSound.stop();
+                this.currentActionSound.destroy();
+                this.currentActionSound = null;
+            }
+            if (this.flySound) {
+                this.flySound.stop();
+                this.flySound.destroy();
+                this.flySound = null;
+            }
+            this.showCompletionMessage();
         }
     }
 
@@ -289,6 +326,18 @@ export default class AgricultureScene extends Phaser.Scene {
                     ease: 'Sine.easeInOut'
                 });
             }
+        });
+
+        // 播放完成音效
+        const finishSound = this.sound.add('finish', { 
+            volume: 0.8,
+            loop: false
+        });
+        finishSound.play();
+
+        // 音效播放完成后清理资源
+        finishSound.once('complete', () => {
+            finishSound.destroy();
         });
     }
 
@@ -619,50 +668,181 @@ export default class AgricultureScene extends Phaser.Scene {
         });
     }
 
-    showStartPrompt() {
-        const overlay = this.add.graphics();
+    showWelcomeDialog() {
+        // 创建半透明黑色背景
+        const overlay = this.add.graphics()
+            .setDepth(98);  // 设置深度为98
         overlay.fillStyle(0x000000, 0.7);
-        overlay.fillRect(0, 0, this.width, this.height);
+        overlay.fillRect(0, 0, this.scale.width, this.scale.height);
 
-        const messageBox = this.add.graphics();
+        // 修改弹窗尺寸和位置
+        const boxWidth = this.scale.width * 0.9;     // 弹窗宽度为屏幕宽度的80%
+        const boxHeight = this.scale.height * 0.25;   // 弹窗高度为屏幕高度的25%
+        const boxY = this.scale.height * 0.75;        // 弹窗垂直位置在屏幕75%的位置
+
+        // 创建弹窗背景
+        const messageBox = this.add.graphics()
+            .setDepth(98);  // 设置深度为98
         messageBox.fillStyle(0xE6D5AC, 0.95);
         messageBox.lineStyle(4, 0x8B4513);
-        messageBox.fillRoundedRect(this.width/2 - 300, this.height/2 - 150, 600, 300, 20);
-        messageBox.strokeRoundedRect(this.width/2 - 300, this.height/2 - 150, 600, 300, 20);
+        messageBox.fillRoundedRect(
+            this.scale.width/2 - boxWidth/2, 
+            boxY - boxHeight/2, 
+            boxWidth, 
+            boxHeight, 
+            20
+        );
+        messageBox.strokeRoundedRect(
+            this.scale.width/2 - boxWidth/2, 
+            boxY - boxHeight/2, 
+            boxWidth, 
+            boxHeight, 
+            20
+        );
 
-        const content = this.add.text(this.width/2, this.height/2, 
-            '欢迎来到现代化农业示范基地！\n\n' +
-            '你将操控智能无人机进行农田管理。\n\n' +
-            '点击无人机起飞后，\n' +
-            '快速点击屏幕进行浇水和施肥。\n\n' +
-            '准备好了吗？点击任意位置开始！', {
-            fontSize: '24px',
-            fill: '#4A3000',
-            align: 'center',
-            lineSpacing: 10
-        }).setOrigin(0.5);
+        // 确保角色在弹窗前面
+        if (this.player) {
+            this.player.setDepth(99);  // 设置角色深度为99，确保在弹窗之上
+        }
 
-        this.input.once('pointerdown', () => {
-            this.isPlaying = true;
-            this.isAirplaneFlying = false;
-            this.isFirstFlight = false;  // 重置首次飞行标记
-            this.clickCount = 0;
-            this.fieldProgress = 0;
-            this.updateFieldMask();
-            
-            overlay.destroy();
-            messageBox.destroy();
-            content.destroy();
-            
-            // 开始计时
-            this.gameStartTime = Date.now();
-            this.gameTimer = this.time.addEvent({
-                delay: 1000,
-                callback: this.updateTimer,
-                callbackScope: this,
-                loop: true
+        // 创建文本对象（设置深度为98，与弹窗同层）
+        const textLines = [
+            '欢迎来到现代化农业示范基地！',
+            '你将操控智能无人机进行农田管理。',
+            '点击无人机起飞后，快速点击屏幕进行浇水和施肥。',
+            '准备好了吗？点击任意位置开始！'
+        ];
+
+        const textObjects = [];
+        const startY = boxY - boxHeight/2 + 40;
+        const lineSpacing = 30;
+
+        textLines.forEach((line, index) => {
+            const text = this.add.text(
+                this.scale.width/2, 
+                startY + index * lineSpacing,
+                line,
+                {
+                    fontSize: '24px',
+                    fill: '#4A3000',
+                    align: 'center'
+                }
+            )
+            .setOrigin(0.5)
+            .setAlpha(0)
+            .setDepth(98);  // 设置文本深度为98
+
+            textObjects.push(text);
+        });
+
+        // 为每行文本添加渐入动画，并实现逐行显示效果
+        textObjects.forEach((textObj, index) => {
+            this.tweens.add({
+                targets: textObj,
+                alpha: { from: 0, to: 1 },
+                y: { from: textObj.y + 20, to: textObj.y },
+                duration: 500,
+                ease: 'Power2',
+                delay: index * 500,  // 每行延迟显示
+                onComplete: () => {
+                    // 如果不是最后一行，开始下一行的显示
+                    if (index < textObjects.length - 1) {
+                        textObjects[index + 1].setVisible(true);
+                    }
+                }
             });
         });
+
+        // 创建并播放背景音乐
+        try {
+            this.bgm = this.sound.add('agriculture-bgm', { 
+                loop: true,
+                volume: 0.5
+            });
+
+            // 创建一个隐藏的按钮来触发音频
+            const hiddenButton = document.createElement('button');
+            hiddenButton.style.position = 'absolute';
+            hiddenButton.style.top = '0';
+            hiddenButton.style.left = '0';
+            hiddenButton.style.width = '100%';
+            hiddenButton.style.height = '100%';
+            hiddenButton.style.opacity = '0';
+            hiddenButton.style.cursor = 'default';
+            document.body.appendChild(hiddenButton);
+
+            const resumeAudioContext = () => {
+                const context = this.sound.context;
+                if (context.state === 'suspended') {
+                    context.resume();
+                }
+                this.bgm.play();
+                document.body.removeChild(hiddenButton);
+            };
+
+            hiddenButton.addEventListener('click', resumeAudioContext);
+            requestAnimationFrame(() => {
+                hiddenButton.dispatchEvent(new MouseEvent('click', {
+                    view: window,
+                    bubbles: true,
+                    cancelable: true
+                }));
+            });
+        } catch (error) {
+            console.error('Failed to load or play audio:', error);
+        }
+
+        // 点击任意位置关闭弹窗
+        const closeDialog = () => {
+            // 文本淡出动画
+            textObjects.forEach((textObj, index) => {
+                this.tweens.add({
+                    targets: textObj,
+                    alpha: 0,
+                    y: textObj.y + 10,
+                    duration: 300,
+                    ease: 'Power2',
+                    delay: index * 100
+                });
+            });
+
+            // 弹窗和阴影背景淡出动画
+            this.tweens.add({
+                targets: [messageBox, overlay],  // 同时处理弹窗和阴影
+                alpha: 0,
+                duration: 300,
+                ease: 'Power2',
+                delay: textObjects.length * 100,
+                onComplete: () => {
+                    // 清理所有元素
+                    messageBox.destroy();
+                    overlay.destroy();
+                    textObjects.forEach(text => text.destroy());
+                    
+                    // 开始游戏
+                    this.isPlaying = true;
+                    this.isAirplaneFlying = false;
+                    this.isFirstFlight = false;
+                    this.clickCount = 0;
+                    this.fieldProgress = 0;
+                    this.updateFieldMask();
+                    
+                    // 开始计时
+                    this.gameStartTime = Date.now();
+                    this.gameTimer = this.time.addEvent({
+                        delay: 1000,
+                        callback: this.updateTimer,
+                        callbackScope: this,
+                        loop: true
+                    });
+                }
+            });
+
+            // 移除点击事件
+            this.input.off('pointerdown', closeDialog);
+        };
+
+        this.input.on('pointerdown', closeDialog);
     }
 
     updateTimer() {
@@ -737,10 +917,32 @@ export default class AgricultureScene extends Phaser.Scene {
         this.hintEffects.animations.push(flashAnim);
 
         // 4. 当点击无人机时，移除提示动画并开始飞行
-        this.airplane.on('pointerdown', () => {
+        this.airplane.setInteractive().on('pointerdown', () => {
             if (this.isPlaying && !this.isAirplaneFlying) {
                 // 停止并清理所有提示动画和效果
                 this.clearHintEffects();
+                
+                // 确保停止并销毁背景音乐
+                if (this.bgm) {
+                    this.bgm.stop();
+                    this.bgm.destroy();
+                    this.bgm = null;
+                }
+
+                // 播放一次性飞行音效
+                this.flySound = this.sound.add('fly', { 
+                    volume: 0.8,
+                    loop: false
+                });
+                this.flySound.play();
+                
+                // 音效播放完成后清理资源
+                this.flySound.once('complete', () => {
+                    if (this.flySound) {
+                        this.flySound.destroy();
+                        this.flySound = null;
+                    }
+                });
                 
                 // 开始飞行操作
                 this.isAirplaneFlying = true;
@@ -769,20 +971,24 @@ export default class AgricultureScene extends Phaser.Scene {
     preload() {
         this.load.setBaseURL('assets/');
         
-        // 加载农业场景资源
-        this.load.image('agriculture-bg', 'images/scenes/agriculture/background.png');  // 背景图
-        this.load.image('airplane', 'images/scenes/agriculture/airplane.png');          // 无人机
-        this.load.image('field', 'images/scenes/agriculture/field.png');               // 农田
+        // 加载音频资源
+        this.load.audio('agriculture-bgm', 'audio/AgricultureScene.mp3');
+        this.load.audio('fly', 'audio/fly.mp3');      // 飞行音效
+        this.load.audio('action', 'audio/action.mp3'); // 操作音效
+        this.load.audio('finish', 'audio/finish.mp3'); // 添加完成音效
+        
+        // 加载场景基础资源
+        this.load.image('agriculture-bg', 'images/scenes/agriculture/background.png');
+        this.load.image('airplane', 'images/scenes/agriculture/airplane.png'); 
         
         // 加载通用资源
         this.load.image('back', 'images/common/back.png');                             // 返回按钮
-        this.load.image('sparkle', 'images/common/sparkle.png');                       // 特效
+                        // 特效
         
         // 加载奖牌相关资源
         this.load.image('gold-medal', 'images/common/gold.png');
         this.load.image('silver-medal', 'images/common/silver.png');
         this.load.image('bronze-medal', 'images/common/bronze.png');
-        this.load.image('popup-bg', 'images/common/popup-bg.png');
         this.load.image('try-again-btn', 'images/common/try-again.png');
         this.load.image('other-games-btn', 'images/common/other-games.png');
 
@@ -807,7 +1013,7 @@ export default class AgricultureScene extends Phaser.Scene {
 
         // 更新角色位置和大小
         if (this.player) {
-            this.player.setPosition(width * 0.2, height * 0.7)
+            this.player.setPosition(width * 0.15, height * 0.7)
                 .setScale(height * 0.001);
         }
 
@@ -838,5 +1044,24 @@ export default class AgricultureScene extends Phaser.Scene {
 
         // 显示完成消息
         this.showCompletionMessage(medal);
+    }
+
+    // 修改 shutdown 方法
+    shutdown() {
+        if (this.bgm) {
+            this.bgm.stop();
+            this.bgm.destroy();
+            this.bgm = null;
+        }
+        if (this.flySound) {
+            this.flySound.stop();
+            this.flySound.destroy();
+            this.flySound = null;
+        }
+        if (this.currentActionSound) {
+            this.currentActionSound.stop();
+            this.currentActionSound.destroy();
+            this.currentActionSound = null;
+        }
     }
 }

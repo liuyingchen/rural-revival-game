@@ -33,16 +33,63 @@ export default class EcommerceScene extends Phaser.Scene {
     }
 
     create() {
-        // 重置游戏状态
         this.resetGameState();
 
-        const width = this.scale.width;
-        const height = this.scale.height;
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
 
         // 添加背景图并设置为全屏
         this.add.image(width/2, height/2, 'ecommerce-bg')
             .setDisplaySize(width, height)
             .setDepth(-1);
+
+        // 创建背景音乐
+        this.bgm = this.sound.add('ecommerce-bgm', { 
+            loop: true,
+            volume: 0.5
+        });
+
+        // 尝试直接播放
+        this.bgm.play();
+
+        // 如果直接播放失败，使用备用方案
+        if (!this.bgm.isPlaying) {
+            // 创建一个隐藏的按钮来触发音频
+            const hiddenButton = document.createElement('button');
+            hiddenButton.style.position = 'absolute';
+            hiddenButton.style.top = '0';
+            hiddenButton.style.left = '0';
+            hiddenButton.style.width = '100%';
+            hiddenButton.style.height = '100%';
+            hiddenButton.style.opacity = '0';
+            hiddenButton.style.cursor = 'default';
+            document.body.appendChild(hiddenButton);
+
+            // 确保 AudioContext 已经准备好
+            const resumeAudioContext = () => {
+                const context = this.sound.context;
+                // 恢复 AudioContext
+                if (context.state === 'suspended') {
+                    context.resume();
+                }
+                // 播放背景音乐
+                this.bgm.play();
+                // 移除按钮和事件监听
+                document.body.removeChild(hiddenButton);
+            };
+
+            // 添加真实的点击事件监听
+            hiddenButton.addEventListener('click', resumeAudioContext);
+
+            // 模拟点击
+            requestAnimationFrame(() => {
+                hiddenButton.dispatchEvent(new MouseEvent('click', {
+                    view: window,
+                    bubbles: true,
+                    cancelable: true
+                }));
+            });
+        }
 
         // 首先放置角色，作为参考点
         const characterType = window.gameState.character || 'female';
@@ -123,8 +170,19 @@ export default class EcommerceScene extends Phaser.Scene {
 
         this.openBox.on('pointerdown', () => {
             if (!this.isPlaying || this.isPackingAnimating) return;
+            
+            // 暂停背景音乐
+            this.bgm.pause();
+            
             this.playPackingAnimation();
             this.sealAndMoveBox();
+            
+            // 动画完成后恢复背景音乐
+            this.time.delayedCall(2500, () => {
+                if (this.bgm && !this.bgm.isPlaying) {
+                    this.bgm.resume();
+                }
+            });
         });
 
         this.showStartPrompt();
@@ -141,6 +199,34 @@ export default class EcommerceScene extends Phaser.Scene {
             callback: this.updateTimer,
             callbackScope: this,
             loop: true
+        });
+
+        // 3. 添加发光效果（替代闪光效果）
+        const glow = this.add.circle(
+            this.openBox.x,
+            this.openBox.y,
+            30,
+            0xffff00,
+            0.6
+        );
+
+        this.tweens.add({
+            targets: glow,
+            alpha: 0,
+            scale: 1.5,
+            duration: 1500,
+            repeat: -1,
+            ease: 'Cubic.easeOut'
+        });
+
+        // 4. 当点击箱子时，移除所有提示动画
+        this.openBox.on('pointerdown', () => {
+            if (this.isPlaying) {
+                // 移除提示效果
+                glow.destroy();
+                // 重置箱子位置
+                this.openBox.y = this.conveyor.y - this.conveyor.displayHeight * 0.3;
+            }
         });
     }
 
@@ -465,6 +551,11 @@ export default class EcommerceScene extends Phaser.Scene {
                 });
             }
         });
+
+        // 停止背景音乐
+        if (this.bgm) {
+            this.bgm.stop();
+        }
     }
 
     // 辅助方法：获取奖牌价值用于比较
@@ -530,17 +621,19 @@ export default class EcommerceScene extends Phaser.Scene {
             ease: 'Cubic.easeOut'
         });
 
-        // 3. 添加闪光效果
-        const flash = this.add.image(
+        // 3. 添加发光效果（替代闪光效果）
+        const glow = this.add.circle(
             this.openBox.x,
             this.openBox.y,
-            'sparkle'
-        ).setScale(0.3).setAlpha(0.6);
+            30,
+            0xffff00,
+            0.6
+        );
 
         this.tweens.add({
-            targets: flash,
+            targets: glow,
             alpha: 0,
-            scale: 0.5,
+            scale: 1.5,
             duration: 1500,
             repeat: -1,
             ease: 'Cubic.easeOut'
@@ -549,11 +642,9 @@ export default class EcommerceScene extends Phaser.Scene {
         // 4. 当点击箱子时，移除所有提示动画
         this.openBox.on('pointerdown', () => {
             if (this.isPlaying) {
-                // 停止浮动动画
-                this.tweens.killTweensOf(this.openBox);
                 // 移除提示效果
                 circle.destroy();
-                flash.destroy();
+                glow.destroy();
                 // 重置箱子位置
                 this.openBox.y = this.conveyor.y - this.conveyor.displayHeight * 0.3;
             }
@@ -563,6 +654,9 @@ export default class EcommerceScene extends Phaser.Scene {
     // 在 preload 中确保加载所需资源
     preload() {
         this.load.setBaseURL('assets/');
+        
+        // 加载背景音乐（确保文件名大小写正确）
+        this.load.audio('ecommerce-bgm', 'audio/EcommerceScene.mp3');
         
         // 加载场景基础资源
         this.load.image('ecommerce-bg', 'images/scenes/ecommerce/background.png');  // 背景图
@@ -578,11 +672,8 @@ export default class EcommerceScene extends Phaser.Scene {
         this.load.image('gold-medal', 'images/common/gold.png');
         this.load.image('silver-medal', 'images/common/silver.png');
         this.load.image('bronze-medal', 'images/common/bronze.png');
-        this.load.image('popup-bg', 'images/common/popup-bg.png');
         this.load.image('try-again-btn', 'images/common/try-again.png');
         this.load.image('other-games-btn', 'images/common/other-games.png');
-        this.load.image('sparkle', 'images/common/sparkle.png');
-        this.load.image('reward-bg', 'images/common/reward-bg.png');
     }
 
     // 添加一个窗口大小变化的监听器
@@ -643,6 +734,10 @@ export default class EcommerceScene extends Phaser.Scene {
             this.medalBounceTween.stop();
             this.medalBounceTween.remove();
         }
+        if (this.bgm) {
+            this.bgm.stop();
+            this.bgm.destroy();
+        }
         super.shutdown();
     }
 
@@ -679,5 +774,19 @@ export default class EcommerceScene extends Phaser.Scene {
     init() {
         // 只重置游戏状态数据，不涉及UI元素
         this.resetGameState();
+    }
+
+    // 场景暂停时处理
+    pause() {
+        if (this.bgm) {
+            this.bgm.pause();
+        }
+    }
+
+    // 场景恢复时处理
+    resume() {
+        if (this.bgm && !this.bgm.isPlaying) {
+            this.bgm.resume();
+        }
     }
 }

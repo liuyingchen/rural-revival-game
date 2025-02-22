@@ -19,6 +19,11 @@ export default class CultureScene extends Phaser.Scene {
     preload() {
         this.load.setBaseURL('assets/');
         
+        // 加载背景音乐
+        this.load.audio('culture-bgm', 'audio/culture.mp3');
+        this.load.audio('pingtu', 'audio/pingtu.mp3');  // 添加拼图音效
+        this.load.audio('finish', 'audio/finish.mp3');  // 添加完成音效
+        
         // 加载场景资源
         this.load.image('culture-bg', 'images/scenes/culture/background.png');
         this.load.image('total', 'images/scenes/culture/total.png');        // 右侧完整图
@@ -77,6 +82,29 @@ export default class CultureScene extends Phaser.Scene {
         this.time.delayedCall(2000, () => {
             this.showInstructions();
         });
+
+        // 创建并播放背景音乐
+        try {
+            this.bgm = this.sound.add('culture-bgm', { 
+                loop: true,
+                volume: 0.5
+            });
+            this.bgm.play();
+
+            // 添加点击事件监听器来停止音乐
+            this.input.on('pointerdown', () => {
+                if (this.bgm) {
+                    this.bgm.stop();
+                    this.bgm.destroy();
+                    this.bgm = null;
+                }
+                // 移除事件监听器
+                this.input.off('pointerdown');
+            }, this);
+
+        } catch (error) {
+            console.error('Failed to load or play audio:', error);
+        }
     }
 
     // 添加游戏说明弹窗方法
@@ -366,9 +394,21 @@ export default class CultureScene extends Phaser.Scene {
             );
 
             if (distance < 50) {
-                // 添加绿色边框效果
+                // 播放拼图音效
+                const pingtuSound = this.sound.add('pingtu', { 
+                    volume: 0.6,
+                    loop: false
+                });
+                pingtuSound.play();
+
+                // 音效播放完成后清理资源
+                pingtuSound.once('complete', () => {
+                    pingtuSound.destroy();
+                });
+
+                // 保持原有的绿色边框效果
                 const glowFX = gameObject.preFX.addGlow(0x00ff00, 8, 0, false, 0.1, 16);
-                
+
                 // 边框动画
                 this.tweens.add({
                     targets: glowFX,
@@ -461,33 +501,8 @@ export default class CultureScene extends Phaser.Scene {
 
     // 修改拼图完成的效果
     onPuzzleComplete() {
+        // 先显示完成界面
         const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
-        let medal = null;
-
-        // 根据完成时间确定奖牌
-        if (elapsed <= this.medalTimes.gold) {
-            medal = 'gold';
-        } else if (elapsed <= this.medalTimes.silver) {
-            medal = 'silver';
-        } else if (elapsed <= this.medalTimes.bronze) {
-            medal = 'bronze';
-        }
-
-        // 更新玩家奖励
-        playerManager.updateGameMedal('culture', medal);
-
-        // 显示完成消息
-        this.showCompletionMessage(medal);
-    }
-
-    // 修改完成消息显示方法
-    showCompletionMessage(medal) {
-        this.isPlaying = false;
-        
-        // 获取游戏完成时间
-        const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
-
-        // 确定奖牌等级
         let medalLevel = null;
         if (elapsed <= this.medalTimes.gold) {
             medalLevel = 'gold';
@@ -499,6 +514,30 @@ export default class CultureScene extends Phaser.Scene {
 
         // 更新玩家奖励
         playerManager.updateGameMedal('culture', medalLevel);
+
+        // 显示完成界面并同时播放音效
+        this.showCompletionMessage(medalLevel);
+    }
+
+    // 修改完成消息显示方法
+    showCompletionMessage(medalLevel) {
+        // 播放完成音效
+        const finishSound = this.sound.add('finish', { 
+            volume: 0.8,
+            loop: false
+        });
+        finishSound.play();
+
+        // 音效播放完成后清理资源
+        finishSound.once('complete', () => {
+            finishSound.destroy();
+        });
+
+        // 显示完成界面
+        this.isPlaying = false;
+        
+        // 获取游戏完成时间
+        const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
 
         // 添加奖励背景
         const bg = this.add.image(this.scale.width/2, this.scale.height/2, 'reward-bg')
@@ -637,5 +676,87 @@ export default class CultureScene extends Phaser.Scene {
                     .setDepth(2);
             });
         }
+    }
+
+    // 确保在场景关闭时清理音频资源
+    shutdown() {
+        if (this.bgm) {
+            this.bgm.stop();
+            this.bgm.destroy();
+            this.bgm = null;
+        }
+        // ... 其他清理代码 ...
+    }
+
+    checkPuzzlePlacement(piece) {
+        const targetX = piece.targetX;
+        const targetY = piece.targetY;
+        const distance = Phaser.Math.Distance.Between(piece.x, piece.y, targetX, targetY);
+
+        if (distance < 50) {  // 如果足够接近目标位置
+            piece.x = targetX;
+            piece.y = targetY;
+            piece.input.draggable = false;
+            piece.isPlaced = true;
+
+            // 创建绿色边框效果
+            const effect = this.add.graphics();
+            effect.lineStyle(4, 0x00ff00);
+            effect.strokeRect(piece.x - piece.width/2, piece.y - piece.height/2, piece.width, piece.height);
+
+            // 添加拼图音效
+            const pingtuSound = this.sound.add('pingtu', { 
+                volume: 0.6,
+                loop: false
+            });
+            pingtuSound.play();
+
+            // 音效播放完成后清理资源
+            pingtuSound.once('complete', () => {
+                pingtuSound.destroy();
+            });
+
+            // 边框淡出动画
+            this.tweens.add({
+                targets: effect,
+                alpha: 0,
+                duration: 500,
+                ease: 'Power2',
+                onComplete: () => {
+                    effect.destroy();
+                }
+            });
+
+            this.checkCompletion();
+        }
+    }
+
+    showGreenEffect(piece) {
+        // 播放拼图放置音效
+        const pingtuSound = this.sound.add('pingtu', { 
+            volume: 0.6,
+            loop: false
+        });
+        pingtuSound.play();
+
+        // 音效播放完成后清理资源
+        pingtuSound.once('complete', () => {
+            pingtuSound.destroy();
+        });
+
+        // 保持原有的绿色动态效果
+        const effect = this.add.graphics();
+        effect.lineStyle(4, 0x00ff00);
+        effect.strokeRect(piece.x - piece.width/2, piece.y - piece.height/2, piece.width, piece.height);
+
+        this.tweens.add({
+            targets: effect,
+            alpha: 0,
+            duration: 500,
+            ease: 'Power2',
+            onComplete: () => {
+                effect.destroy();
+            }
+        });
     }
 } 
