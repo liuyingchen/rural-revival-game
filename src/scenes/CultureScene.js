@@ -5,22 +5,27 @@ export default class CultureScene extends Phaser.Scene {
         super({ key: 'CultureScene' });
         this.isPlaying = false;
         this.matchedPairs = 0;
-        this.totalPairs = 6;  // 总共6对文化元素
+        this.totalPairs = 4;  // 总共6对文化元素
         this.selectedItem = null;
         this.gameStartTime = 0;
+        this.completedPieces = 0;  // 改为统计完成的拼图块数量
+        this.totalPieces = 4;      // 总共需要完成的拼图块数量
+        this.pairsText = null;      // 添加进度文本引用
+        this.isGameComplete = false;  // 添加游戏完成标记
         // 添加奖牌时间标准
         this.medalTimes = {
             gold: 30,    // 30秒内完成获得金牌
             silver: 45,  // 45秒内完成获得银牌
             bronze: 60   // 60秒内完成获得铜牌
         };
+        this.lastUpdateTime = 0;  // 用于控制更新频率
     }
 
     preload() {
         this.load.setBaseURL('assets/');
         
         // 加载背景音乐
-        this.load.audio('culture-bgm', 'audio/culture.mp3');
+        this.load.audio('culture-bgm', 'audio/culture-bgm.mp3');
         this.load.audio('pingtu', 'audio/pingtu.mp3');  // 添加拼图音效
         this.load.audio('finish', 'audio/finish.mp3');  // 添加完成音效
         
@@ -56,32 +61,7 @@ export default class CultureScene extends Phaser.Scene {
 
         // 添加背景
         this.add.image(width/2, height/2, 'culture-bg')
-            .setDisplaySize(width, height)
-            .setDepth(-1);
-
-        // 添加选中的角色（保持在左侧）
-        const characterType = window.gameState.character || 'female';
-        this.player = this.add.sprite(
-            width * 0.15,  // 保持在左侧
-            height * 0.7,  // 保持原位置
-            characterType
-        )
-        .setScale(height * 0.001)
-        .setDepth(2);
-
-        // 添加返回按钮
-        const backButton = this.add.image(80, 40, 'back')
-            .setScale(0.6)
-            .setDepth(2)
-            .setInteractive()
-            .on('pointerdown', () => {
-                this.scene.start('SceneSelectScene');
-            });
-
-        // 延迟2秒显示游戏说明弹窗
-        this.time.delayedCall(2000, () => {
-            this.showInstructions();
-        });
+            .setDisplaySize(width, height);
 
         // 创建并播放背景音乐
         try {
@@ -90,279 +70,250 @@ export default class CultureScene extends Phaser.Scene {
                 volume: 0.5
             });
             this.bgm.play();
+        } catch (error) {
+            console.warn('Background music failed to load:', error);
+        }
 
-            // 添加点击事件监听器来停止音乐
-            this.input.on('pointerdown', () => {
+        // 添加选中的角色
+        const characterType = window.gameState.character || 'female';
+        this.player = this.add.sprite(
+            this.scale.width * 0.10,
+            this.scale.height * 0.75,
+            characterType
+        ).setScale(this.scale.height * 0.001)
+        .setDepth(99);
+
+        // 添加返回按钮
+        const backButton = this.add.image(80, 40, 'back')
+            .setScale(0.6)
+            .setDepth(2)
+            .setInteractive()
+            .on('pointerdown', () => {
                 if (this.bgm) {
                     this.bgm.stop();
-                    this.bgm.destroy();
-                    this.bgm = null;
                 }
-                // 移除事件监听器
-                this.input.off('pointerdown');
-            }, this);
+                this.scene.start('SceneSelectScene');
+            });
 
-        } catch (error) {
-            console.error('Failed to load or play audio:', error);
-        }
+        // 初始化状态文本（显示0s）
+        this.timeText = this.add.text(width - 200, 20, 'Time: 0s', {
+            fontSize: Math.min(width, height) * 0.03 + 'px',
+            fill: '#000',
+            backgroundColor: '#ffffff80',
+            padding: { x: 15, y: 8 }
+        }).setDepth(2);
+
+        this.pairsText = this.add.text(width - 200, 70, 'Pairs: 0/4', {
+            fontSize: Math.min(width, height) * 0.03 + 'px',
+            fill: '#000',
+            backgroundColor: '#ffffff80',
+            padding: { x: 15, y: 8 }
+        }).setDepth(2);
+
+        // 显示欢迎弹窗
+        this.showWelcomeDialog();
     }
 
     // 添加游戏说明弹窗方法
-    showInstructions() {
-        const overlay = this.add.graphics();
-        overlay.fillStyle(0x000000, 0.7);
+    showWelcomeDialog() {
+        // 创建半透明黑色背景，降低透明度
+        const overlay = this.add.graphics()
+            .setDepth(98);
+        overlay.fillStyle(0x000000, 0.3);  // 将透明度从0.7改为0.3
         overlay.fillRect(0, 0, this.scale.width, this.scale.height);
 
-        // 修改弹窗尺寸和位置
-        const boxWidth = 800;  // 更宽
-        const boxHeight = 200;  // 更矮
-        const boxY = this.scale.height * 0.75;  // 更靠近底部
+        // 弹窗尺寸和位置
+        const boxWidth = this.scale.width * 0.8;     // 弹窗宽度为屏幕宽度的80%
+        const boxHeight = this.scale.height * 0.25;   // 弹窗高度保持不变
+        const boxY = this.scale.height * 0.75;
 
-        const messageBox = this.add.graphics();
+        // 创建弹窗背景
+        const messageBox = this.add.graphics()
+            .setDepth(98);
         messageBox.fillStyle(0xE6D5AC, 0.95);
         messageBox.lineStyle(4, 0x8B4513);
         messageBox.fillRoundedRect(
-            this.scale.width/2 - boxWidth/2, 
-            boxY - boxHeight/2, 
-            boxWidth, 
-            boxHeight, 
+            this.scale.width/2 - boxWidth/2,
+            boxY - boxHeight/2,
+            boxWidth,
+            boxHeight,
             20
         );
         messageBox.strokeRoundedRect(
-            this.scale.width/2 - boxWidth/2, 
-            boxY - boxHeight/2, 
-            boxWidth, 
-            boxHeight, 
+            this.scale.width/2 - boxWidth/2,
+            boxY - boxHeight/2,
+            boxWidth,
+            boxHeight,
             20
         );
 
-        // 分段创建文本，以便添加动画
-        const textLines = [
-            '欢迎来到传统文化拼图游戏！',
-            '通过拼图来了解我们的传统文化。',
-            '拖动拼图块到正确的位置，完成这幅传统文化图画。',
-            '准备好了吗？点击任意位置开始！'
+        // 修改文案内容
+        const allTextLines = [
+            "Dear Pakistani friend, welcome to China's ancient house of rural heritage!",
+            "Repair an antique chair using the sunmao joinery, a technique behind architectural marvels like the Forbidden City.",
+            "Place the wooden parts correctly to preserve this craft.",
+            "Ready to be a cultural guardian?"
         ];
 
-        const textObjects = [];
-        const startY = boxY - boxHeight/2 + 40;
-        const lineSpacing = 30;
+        // 创建文本容器和遮罩
+        const textContainer = this.add.container(0, 0).setDepth(99);
+        const textMask = this.add.graphics()
+            .fillStyle(0xffffff)
+            .fillRect(
+                this.scale.width/2 - boxWidth/2,
+                boxY - boxHeight/2,
+                boxWidth,
+                boxHeight
+            );
+        textContainer.setMask(new Phaser.Display.Masks.GeometryMask(this, textMask));
 
-        // 创建所有文本对象（初始透明）
-        textLines.forEach((line, index) => {
+        // 创建固定数量的文本对象
+        const textObjects = [];
+        const maxLines = 4;
+        const startY = boxY - boxHeight/2 + 25;
+        const lineSpacing = boxHeight / 5;
+        let currentStartIndex = 0;
+
+        // 创建文本对象
+        for (let i = 0; i < maxLines; i++) {
             const text = this.add.text(
-                this.scale.width/2, 
-                startY + index * lineSpacing,
-                line,
+                this.scale.width/2 - boxWidth/2 + 40,
+                startY + i * lineSpacing,
+                '',
                 {
-                    fontSize: '24px',
+                    fontSize: '20px',
                     fill: '#4A3000',
-                    align: 'center'
+                    align: 'left',
+                    wordWrap: { width: boxWidth - 80 }
                 }
             )
-            .setOrigin(0.5)
-            .setAlpha(0);  // 初始设置为透明
-
+            .setOrigin(0, 0.5);
             textObjects.push(text);
-        });
-
-        // 依次显示每行文本的动画
-        textObjects.forEach((text, index) => {
-            this.tweens.add({
-                targets: text,
-                alpha: 1,
-                y: text.y - 10,  // 略微上移
-                duration: 500,
-                ease: 'Power2',
-                delay: index * 300  // 每行文本依次出现
-            });
-        });
-
-        this.input.once('pointerdown', () => {
-            // 使用普通的 tween 序列替代 timeline
-            const fadeOutTexts = () => {
-                textObjects.forEach((text, index) => {
-                    this.tweens.add({
-                        targets: text,
-                        alpha: 0,
-                        y: text.y - 20,
-                        duration: 200,
-                        ease: 'Power2',
-                        delay: index * 100
-                    });
-                });
-
-                // 最后一个文本消失后，执行弹窗消失动画
-                this.tweens.add({
-                    targets: [messageBox, overlay],
-                    alpha: 0,
-                    duration: 300,
-                    ease: 'Power2',
-                    delay: textObjects.length * 100,
-                    onComplete: () => {
-                        // 清理所有元素
-                        [...textObjects, messageBox, overlay].forEach(obj => obj.destroy());
-                        
-                        // 创建游戏区域
-                        this.createGameArea();
-
-                        // 添加状态文本
-                        this.timeText = this.add.text(this.scale.width - 200, 20, 'Time: 0s', {
-                            fontSize: Math.min(this.scale.width, this.scale.height) * 0.03 + 'px',
-                            fill: '#000',
-                            backgroundColor: '#ffffff80',
-                            padding: { x: 15, y: 8 }
-                        }).setDepth(2);
-
-                        this.pairsText = this.add.text(this.scale.width - 200, 70, `Pairs: ${this.matchedPairs}/${this.totalPairs}`, {
-                            fontSize: Math.min(this.scale.width, this.scale.height) * 0.03 + 'px',
-                            fill: '#000',
-                            backgroundColor: '#ffffff80',
-                            padding: { x: 15, y: 8 }
-                        }).setDepth(2);
-
-                        // 开始游戏
-                        this.startGame();
-                    }
-                });
-            };
-
-            fadeOutTexts();
-        });
-    }
-
-    // 添加开始游戏方法
-    startGame() {
-        this.isPlaying = true;
-        this.matchedPairs = 0;
-        this.gameStartTime = Date.now();
-
-        // 开始计时
-        this.time.addEvent({
-            delay: 1000,
-            callback: this.updateTimer,
-            callbackScope: this,
-            loop: true
-        });
-    }
-
-    // 添加计时器更新方法
-    updateTimer() {
-        if (this.isPlaying) {
-            const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
-            this.timeText.setText(`Time: ${elapsed}s`);
+            textContainer.add(text);
         }
+
+        // 打字机效果
+        const typewriterEffect = (textObject, fullText) => {
+            return new Promise((resolve) => {
+                let currentText = '';
+                let currentIndex = 0;
+                
+                const timer = this.time.addEvent({
+                    delay: 30,
+                    callback: () => {
+                        // 检查textObject是否还存在且是否还在场景中
+                        if (!textObject || !textObject.scene) {
+                            timer.destroy();
+                            resolve();
+                            return;
+                        }
+
+                        if (currentIndex < fullText.length) {
+                            currentText += fullText[currentIndex];
+                            textObject.setText(currentText);
+                            currentIndex++;
+                        } else {
+                            timer.destroy();
+                            resolve();
+                        }
+                    },
+                    loop: true
+                });
+
+                // 可选：添加场景关闭时的清理
+                this.events.once('shutdown', () => {
+                    timer.destroy();
+                    resolve();
+                });
+            });
+        };
+
+        // 显示文本
+        const showNextLine = async (index) => {
+            if (index < allTextLines.length) {
+                await typewriterEffect(textObjects[index], allTextLines[index]);
+                if (index + 1 < allTextLines.length) {
+                    await showNextLine(index + 1);
+                }
+            }
+        };
+
+        // 开始显示第一行
+        showNextLine(0);
+
+        // 点击任意位置关闭弹窗并开始游戏
+        this.input.once('pointerdown', () => {
+            // 清理弹窗
+            messageBox.destroy();
+            overlay.destroy();
+            textContainer.destroy();
+            textMask.destroy();
+            textObjects.forEach(text => {
+                if (text && text.scene) text.destroy();
+            });
+
+            // 只显示配对进度
+            this.pairsText.setVisible(true);
+
+            // 创建游戏区域
+            this.createGameArea();
+
+            // 只记录开始时间
+            this.gameStartTime = Date.now();
+        });
     }
 
     createGameArea() {
         const width = this.scale.width;
         const height = this.scale.height;
-        const baseScale = 0.4;  // 缩小基础比例
+        const baseScale = 0.4;
 
-        // 基础图像（移到右侧）
-        this.baseImage = this.add.image(
-            width * 0.7,     // 移到右侧 70% 位置
-            height * 0.45,   // 稍微降低高度到 45%
-            'other'
-        )
-        .setScale(baseScale)
-        .setDepth(0);
+        // 添加半透明黑色遮罩层
+        const overlay = this.add.graphics()
+            .setDepth(-1);
+        overlay.fillStyle(0x000000, 0.7);  // 修改这里的透明度，0.7 表示70%不透明度
+        overlay.fillRect(0, 0, this.scale.width, this.scale.height);
 
-        // 获取图片的实际显示尺寸
-        const imageWidth = this.textures.get('other').getSourceImage().width * baseScale;
-        const imageHeight = this.textures.get('other').getSourceImage().height * baseScale;
+        // 基础图像位置
+        const baseX = width * 0.55;  // 基准X位置，在屏幕55%处
+        const baseY = height * 0.5;  // 基准Y位置，在屏幕中间
 
-        // 计算每个网格的实际尺寸
-        const cellWidth = imageWidth / 4;   // 4列
-        const cellHeight = imageHeight / 6;  // 6行
+        // 基础图像（other.png）
+        this.baseImage = this.add.image(baseX, baseY, 'other')
+            .setScale(baseScale)
+            .setDepth(1);
 
-        // 计算基础图的左上角坐标
-        const baseLeft = this.baseImage.x - (imageWidth / 2);
-        const baseTop = this.baseImage.y - (imageHeight / 2);
+        // 获取拼图块尺寸
+        const pieceWidth = this.textures.get('piece-22').getSourceImage().width * baseScale;
+        const pieceHeight = this.textures.get('piece-22').getSourceImage().height * baseScale;
 
-        // 修改拼图块的位置定义
-        const pieces = [
-            { 
-                key: 'piece-22',
-                x: width * 0.4,    // 初始位置在左侧
-                y: height * 0.3,
-                targetPosition: {  
-                    row: 2,
-                    col: 2,
-                    x: 0,         
-                    y: 0          
-                }
-            },
-            { 
-                key: 'piece-33',
-                x: width * 0.4, 
-                y: height * 0.5,
-                targetPosition: {
-                    row: 3,
-                    col: 3,
-                    x: 0,
-                    y: 0
-                }
-            },
-            { 
-                key: 'piece-42',
-                x: width * 0.5, 
-                y: height * 0.3,
-                targetPosition: {
-                    row: 4,
-                    col: 2,
-                    x: 0,
-                    y: 0
-                }
-            },
-            { 
-                key: 'piece-44',
-                x: width * 0.5, 
-                y: height * 0.5,
-                targetPosition: {
-                    row: 4,
-                    col: 4,
-                    x: 0,
-                    y: 0
-                }
-            }
+        // 计算每个拼图块的目标位置
+        const positions = [
+            { key: 'piece-22', x: baseX - pieceWidth, y: baseY - pieceHeight },     // 左上
+            { key: 'piece-33', x: baseX, y: baseY },                                // 中间
+            { key: 'piece-42', x: (baseX - pieceWidth)*1.02, y: baseY + pieceHeight }, // 左下
+            { key: 'piece-44', x: (baseX + pieceWidth)*0.98, y: baseY + pieceHeight }  // 右下
         ];
 
-        // 计算每个拼图块的具体目标位置
-        pieces.forEach(piece => {
-            const gridX = this.baseImage.x - (this.baseImage.displayWidth / 2);
-            const gridY = this.baseImage.y - (this.baseImage.displayHeight / 2);
-            
-            const cellWidth = this.baseImage.displayWidth / 4;
-            const cellHeight = this.baseImage.displayHeight / 6;
+        // 创建拼图块，全部堆叠在右下角
+        this.puzzlePieces = positions.map((piece, index) => {
+            // 所有拼图块都在右下角区域，稍微错开一点位置
+            const randomX = Phaser.Math.Between(width * 0.7, width * 0.75);
+            const randomY = Phaser.Math.Between(height * 0.65, height * 0.7);
 
-            // 保持原来的目标点位置计算（不变）
-            piece.targetPosition.x = gridX + (piece.targetPosition.col * cellWidth);
-            piece.targetPosition.y = gridY + (piece.targetPosition.row * cellHeight);
-
-            // 移除之前添加的偏移，因为我们要用这个点作为拼图的右下角
-            // piece.targetPosition.x -= cellWidth;
-            // piece.targetPosition.y -= cellHeight;
-        });
-
-        // 创建拼图块并添加交互
-        this.puzzlePieces = pieces.map(piece => {
-            const puzzlePiece = this.add.image(piece.x, piece.y, piece.key)
+            return this.add.image(randomX, randomY, piece.key)
                 .setScale(baseScale)
                 .setDepth(2)
+                .setOrigin(0, 1)
                 .setInteractive({ draggable: true })
-                // 设置原点为右下角，这样拼图块会以右下角对齐目标点
-                .setOrigin(1, 1);  // 这是关键修改
-            
-            puzzlePiece.targetPosition = piece.targetPosition;
-            return puzzlePiece;
+                .setData('targetX', piece.x)
+                .setData('targetY', piece.y);
         });
 
-        // 添加拖动事件
+        // 添加拖拽事件处理
         this.input.on('dragstart', (pointer, gameObject) => {
-            gameObject.setDepth(3);
-            gameObject.setAlpha(0.8);
-            gameObject.preFX.clear();  // 清除之前的特效
+            gameObject.setDepth(3);  // 拖拽时提升层级
+            gameObject.setAlpha(0.8);  // 拖拽时略微透明
         });
 
         this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
@@ -372,41 +323,38 @@ export default class CultureScene extends Phaser.Scene {
             // 检查是否接近目标位置
             const distance = Phaser.Math.Distance.Between(
                 dragX, dragY,
-                gameObject.targetPosition.x,
-                gameObject.targetPosition.y
+                gameObject.getData('targetX'),
+                gameObject.getData('targetY')
             );
 
+            // 接近时显示吸附提示
             if (distance < 50) {  // 吸附距离阈值
-                this.showSnapGuide(gameObject.targetPosition.x, gameObject.targetPosition.y);
+                this.showSnapGuide(gameObject.getData('targetX'), gameObject.getData('targetY'));
             } else {
                 this.hideSnapGuide();
             }
         });
 
         this.input.on('dragend', (pointer, gameObject) => {
-            gameObject.setAlpha(1);
-            gameObject.setDepth(2);
+            gameObject.setAlpha(1);  // 恢复完全不透明
+            gameObject.setDepth(2);  // 恢复原来的层级
 
             const distance = Phaser.Math.Distance.Between(
                 gameObject.x, gameObject.y,
-                gameObject.targetPosition.x,
-                gameObject.targetPosition.y
+                gameObject.getData('targetX'),
+                gameObject.getData('targetY')
             );
 
-            if (distance < 50) {
+            if (distance < 50) {  // 在吸附范围内
                 // 播放拼图音效
                 const pingtuSound = this.sound.add('pingtu', { 
                     volume: 0.6,
                     loop: false
                 });
                 pingtuSound.play();
+                pingtuSound.once('complete', () => pingtuSound.destroy());
 
-                // 音效播放完成后清理资源
-                pingtuSound.once('complete', () => {
-                    pingtuSound.destroy();
-                });
-
-                // 保持原有的绿色边框效果
+                // 添加绿色边框效果
                 const glowFX = gameObject.preFX.addGlow(0x00ff00, 8, 0, false, 0.1, 16);
 
                 // 边框动画
@@ -421,8 +369,8 @@ export default class CultureScene extends Phaser.Scene {
                 // 位置吸附动画
                 this.tweens.add({
                     targets: gameObject,
-                    x: gameObject.targetPosition.x,
-                    y: gameObject.targetPosition.y,
+                    x: gameObject.getData('targetX'),
+                    y: gameObject.getData('targetY'),
                     duration: 200,
                     ease: 'Back.out',
                     onComplete: () => {
@@ -433,6 +381,26 @@ export default class CultureScene extends Phaser.Scene {
                     }
                 });
             }
+        });
+
+        // 在创建完游戏区域后开始计时
+        this.gameStartTime = Date.now();
+        
+        // 开始计时
+        this.gameTimer = this.time.addEvent({
+            delay: 1000,
+            callback: () => {
+                try {
+                    const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
+                    if (this.timeText && this.timeText.active) {
+                        this.timeText.setText(`Time: ${elapsed}s`);
+                    }
+                } catch (error) {
+                    // 忽略文本更新错误，不影响游戏流程
+                    console.log('Time text update skipped');
+                }
+            },
+            loop: true
         });
     }
 
@@ -454,34 +422,90 @@ export default class CultureScene extends Phaser.Scene {
         }
     }
 
-    // 添加检查拼图进度的方法
+    // 修改检查拼图放置的函数
+    checkPuzzlePlacement(gameObject) {
+        const distance = Phaser.Math.Distance.Between(
+            gameObject.x, gameObject.y,
+            gameObject.getData('targetX'),
+            gameObject.getData('targetY')
+        );
+
+        if (distance < 50) {  // 在吸附范围内
+            // 播放拼图音效
+            const pingtuSound = this.sound.add('pingtu', { 
+                volume: 0.6,
+                loop: false
+            });
+            pingtuSound.play();
+            pingtuSound.once('complete', () => pingtuSound.destroy());
+
+            // 添加绿色边框效果
+            const glowFX = gameObject.preFX.addGlow(0x00ff00, 8, 0, false, 0.1, 16);
+
+            // 边框动画
+            this.tweens.add({
+                targets: glowFX,
+                outerStrength: 4,
+                yoyo: true,
+                duration: 200,
+                repeat: 1
+            });
+
+            // 位置吸附动画
+            this.tweens.add({
+                targets: gameObject,
+                x: gameObject.getData('targetX'),
+                y: gameObject.getData('targetY'),
+                duration: 200,
+                ease: 'Back.out',
+                onComplete: () => {
+                    gameObject.input.draggable = false;  // 禁止继续拖动
+                    this.checkPuzzleProgress();
+                    gameObject.preFX.clear();
+                }
+            });
+        }
+    }
+
+    // 修改检查进度的函数
     checkPuzzleProgress() {
-        // 检查所有拼图块是否都在正确位置
         let correctPieces = 0;
         this.puzzlePieces.forEach(piece => {
             const distance = Phaser.Math.Distance.Between(
-                piece.x, 
-                piece.y, 
-                piece.targetPosition.x, 
-                piece.targetPosition.y
+                piece.x, piece.y,
+                piece.getData('targetX'),
+                piece.getData('targetY')
             );
-
-            if (distance < 30) {  // 如果拼图块在正确位置
-                piece.input.draggable = false;  // 禁止进一步拖动
-                correctPieces++;
-            }
+            if (distance < 5) correctPieces++;
         });
 
         // 更新进度显示
-        this.pairsText.setText(`Pairs: ${correctPieces}/4`);
+        this.pairsText.setText(`Pairs: ${correctPieces}/${this.totalPieces}`);
 
-        // 如果所有拼图都放置正确
-        if (correctPieces === 4) {
-            // 延迟一下再显示完成效果
-            this.time.delayedCall(500, () => {
-                this.onPuzzleComplete();
-            });
+        // 如果所有拼图块都放置正确
+        if (correctPieces === this.totalPieces) {
+            // 计算完成时间和奖牌
+            const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
+            let medal = 'bronze';
+            if (elapsed <= this.medalTimes.gold) {
+                medal = 'gold';
+            } else if (elapsed <= this.medalTimes.silver) {
+                medal = 'silver';
+            }
+
+            // 更新玩家奖励并显示完成消息
+            playerManager.updateGameMedal('culture', medal);
+            this.showCompletionMessage(medal);
         }
+    }
+
+    // 添加重置拼图的函数
+    resetPuzzle() {
+        // 清理当前拼图
+        this.puzzlePieces.forEach(piece => piece.destroy());
+        
+        // 重新创建拼图
+        this.createGameArea();
     }
 
     // 修改隐藏吸附提示的方法
@@ -501,7 +525,13 @@ export default class CultureScene extends Phaser.Scene {
 
     // 修改拼图完成的效果
     onPuzzleComplete() {
-        // 先显示完成界面
+        // 先停止背景音乐
+        if (this.bgm) {
+            this.bgm.stop();
+            this.bgm.destroy();  // 确保完全清理音频资源
+        }
+
+        // 计算完成时间和奖牌等级
         const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
         let medalLevel = null;
         if (elapsed <= this.medalTimes.gold) {
@@ -521,6 +551,12 @@ export default class CultureScene extends Phaser.Scene {
 
     // 修改完成消息显示方法
     showCompletionMessage(medalLevel) {
+        // 停止背景音乐
+        if (this.bgm) {
+            this.bgm.stop();
+            this.bgm.destroy();
+        }
+
         // 播放完成音效
         const finishSound = this.sound.add('finish', { 
             volume: 0.8,
@@ -649,7 +685,7 @@ export default class CultureScene extends Phaser.Scene {
 
         // 更新角色位置和大小
         if (this.player) {
-            this.player.setPosition(width * 0.15, height * 0.7)
+            this.player.setPosition(width * 0.10, height * 0.75)
                 .setScale(height * 0.001);
         }
 
@@ -665,7 +701,7 @@ export default class CultureScene extends Phaser.Scene {
 
         if (this.baseImage) {
             this.baseImage
-                .setPosition(width * 0.7, height * 0.45)  // 更新位置
+                .setPosition(width * 0.55, height * 0.5)  // 更新位置
                 .setScale(baseScale)
                 .setDepth(0);
         }
@@ -678,57 +714,24 @@ export default class CultureScene extends Phaser.Scene {
         }
     }
 
-    // 确保在场景关闭时清理音频资源
+    // 添加场景关闭时的清理方法
     shutdown() {
+        // 清理计时器
+        if (this.gameTimer) {
+            this.gameTimer.remove();
+        }
+
+        // 确保在场景关闭时停止所有音频
         if (this.bgm) {
             this.bgm.stop();
             this.bgm.destroy();
-            this.bgm = null;
         }
+        
+        // 停止所有其他音效
+        this.sound.stopAll();
+
+        this.isPlaying = false;
         // ... 其他清理代码 ...
-    }
-
-    checkPuzzlePlacement(piece) {
-        const targetX = piece.targetX;
-        const targetY = piece.targetY;
-        const distance = Phaser.Math.Distance.Between(piece.x, piece.y, targetX, targetY);
-
-        if (distance < 50) {  // 如果足够接近目标位置
-            piece.x = targetX;
-            piece.y = targetY;
-            piece.input.draggable = false;
-            piece.isPlaced = true;
-
-            // 创建绿色边框效果
-            const effect = this.add.graphics();
-            effect.lineStyle(4, 0x00ff00);
-            effect.strokeRect(piece.x - piece.width/2, piece.y - piece.height/2, piece.width, piece.height);
-
-            // 添加拼图音效
-            const pingtuSound = this.sound.add('pingtu', { 
-                volume: 0.6,
-                loop: false
-            });
-            pingtuSound.play();
-
-            // 音效播放完成后清理资源
-            pingtuSound.once('complete', () => {
-                pingtuSound.destroy();
-            });
-
-            // 边框淡出动画
-            this.tweens.add({
-                targets: effect,
-                alpha: 0,
-                duration: 500,
-                ease: 'Power2',
-                onComplete: () => {
-                    effect.destroy();
-                }
-            });
-
-            this.checkCompletion();
-        }
     }
 
     showGreenEffect(piece) {
@@ -758,5 +761,34 @@ export default class CultureScene extends Phaser.Scene {
                 effect.destroy();
             }
         });
+    }
+
+    // 添加更新配对计数的方法
+    updatePairsText() {
+        if (this.pairsText) {
+            this.pairsText.setText(`Pairs: ${this.matchedPairs}/${this.totalPairs}`);
+        }
+    }
+
+    // 添加场景重置方法
+    reset() {
+        this.isGameComplete = false;
+        this.completedPieces = 0;
+        this.gameStartTime = Date.now();
+        if (this.puzzlePieces) {
+            this.puzzlePieces.forEach(piece => piece.destroy());
+        }
+        this.createGameArea();
+    }
+
+    update(time) {
+        // 只在游戏进行中且每秒更新一次
+        if (this.isPlaying && time - this.lastUpdateTime >= 1000) {
+            this.lastUpdateTime = time;
+            const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
+            if (this.pairsText && this.pairsText.active) {
+                this.pairsText.setText(`Time: ${elapsed}s`);
+            }
+        }
     }
 } 

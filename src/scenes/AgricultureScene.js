@@ -108,7 +108,7 @@ export default class AgricultureScene extends Phaser.Scene {
             }
         });
 
-        // 确保在 preload 中加载 sparkle 图片
+        
     
 
         // 添加无人机提示动画
@@ -371,6 +371,7 @@ export default class AgricultureScene extends Phaser.Scene {
         });
     }
 
+    //这里是增加了一层黄色的遮罩层
     createField() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
@@ -396,8 +397,8 @@ export default class AgricultureScene extends Phaser.Scene {
                     // 主体部分的透明度
                     alpha = 0.5 * (1 - this.fieldProgress);
                 }
-                
-                this.field.fillStyle(0xF4D03F, alpha);
+                // 原来 0xF4D03F 金黄色 0xFFD800   橙黄色 0xFFC000
+                this.field.fillStyle(0xFFC000, alpha);
                 this.field.fillRect(
                     0, 
                     startY + (i * stepHeight), 
@@ -436,9 +437,10 @@ export default class AgricultureScene extends Phaser.Scene {
         // 光晕动画
         this.tweens.add({
             targets: glow,
-            alpha: 0,
-            scale: 1.5,
-            duration: 1000,
+            alpha: { from: 1, to: 0.1 },    // 更大的透明度变化
+            scale: { from: 0.8, to: 2 },    // 更大的缩放范围
+            duration: 600,                   // 更快的动画速度
+            ease: 'Cubic.easeInOut',        // 更强的缓动效果
             repeat: -1,
             yoyo: true
         });
@@ -763,11 +765,11 @@ export default class AgricultureScene extends Phaser.Scene {
             20
         );
 
-        // 文本内容 - 分成三段
+        // 修改文本内容
         const allTextLines = [
-            "Dear Pakistani friend, welcome to China's Modern Agricultural Base!",
-            "Operate a Chinese agricultural drone, tap targets on screen, and complete precision tasks across 300 acres. Experience how technology drives sustainable farming.",
-            "Let's cultivate tomorrow's fields today!"
+            "Dear Pakistani friend, welcome to China's ancient house of rural heritage!",
+            "Repair an antique chair using the sunmao joinery, a technique behind architectural marvels like the Forbidden City.",
+            "Place the wooden parts correctly to preserve this craft. Ready to be a cultural guardian?"
         ];
 
         // 创建文本容器和遮罩
@@ -1008,22 +1010,23 @@ export default class AgricultureScene extends Phaser.Scene {
         const circle = this.add.circle(
             this.airplane.x,
             this.airplane.y,
-            50,
-            0xffff00,
-            0.3
+            70,                 // 更大的半径
+            0xFFF000,          // 更亮的黄色
+            0.7                // 更高的透明度
         );
         this.hintEffects.circle = circle;
 
-        // 光圈动画
-        const circleAnim = this.tweens.add({
+        // 更强烈的脉动动画
+        this.tweens.add({
             targets: circle,
-            scale: 1.5,
-            alpha: 0,
-            duration: 1000,
+            scale: { from: 0.7, to: 1.5 },    // 更大的缩放范围
+            alpha: { from: 0.7, to: 0.1 },    // 更大的透明度变化
+            duration: 600,                     // 更快的动画速度
+            ease: 'Cubic.easeInOut',
             repeat: -1,
-            ease: 'Cubic.easeOut'
+            yoyo: true
         });
-        this.hintEffects.animations.push(circleAnim);
+        //this.hintEffects.animations.push(circleAnim);
 
         // 3. 添加闪光效果
         const flash = this.add.image(

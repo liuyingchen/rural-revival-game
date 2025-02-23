@@ -1,4 +1,6 @@
 import CultureScene from './scenes/CultureScene.js';
+import AgricultureScene from './scenes/AgricultureScene.js';
+import EducationScene from './scenes/EducationScene.js';
 
 const config = {
     // 1. 基础配置
@@ -8,7 +10,7 @@ const config = {
     parent: 'game',           // 游戏容器的 DOM ID
 
     // 2. 场景配置
-    scene: [CultureScene],    // 游戏场景列表
+    scene: [CultureScene, AgricultureScene, EducationScene],    // 游戏场景列表
 
     // 3. 物理引擎配置（如果需要）
     physics: {
@@ -27,4 +29,4 @@ const config = {
 };
 
 // 创建游戏实例
-const game = new Phaser.Game(config); 
+const game = new Phaser.Game(config);

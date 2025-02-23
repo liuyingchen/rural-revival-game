@@ -6,7 +6,10 @@ export default class EcommerceScene extends Phaser.Scene {
         
         // 初始化游戏状态
         if (!window.gameState) {
-            window.gameState = {};
+            window.gameState = {
+                medals: {},
+                character: 'female'
+            };
         }
         if (!window.gameState.medals) {
             window.gameState.medals = {};
@@ -33,133 +36,96 @@ export default class EcommerceScene extends Phaser.Scene {
     }
 
     create() {
-        this.resetGameState();
+        const width = this.scale.width;
+        const height = this.scale.height;
 
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
-
-        // 添加背景图并设置为全屏
+        // 添加背景
         this.add.image(width/2, height/2, 'ecommerce-bg')
-            .setDisplaySize(width, height)
-            .setDepth(-1);
+            .setDisplaySize(width, height);
 
-        // 创建背景音乐
-        this.bgm = this.sound.add('ecommerce-bgm', { 
-            loop: true,
-            volume: 0.5
-        });
-
-        // 尝试直接播放
-        this.bgm.play();
-
-        // 如果直接播放失败，使用备用方案
-        if (!this.bgm.isPlaying) {
-            // 创建一个隐藏的按钮来触发音频
-            const hiddenButton = document.createElement('button');
-            hiddenButton.style.position = 'absolute';
-            hiddenButton.style.top = '0';
-            hiddenButton.style.left = '0';
-            hiddenButton.style.width = '100%';
-            hiddenButton.style.height = '100%';
-            hiddenButton.style.opacity = '0';
-            hiddenButton.style.cursor = 'default';
-            document.body.appendChild(hiddenButton);
-
-            // 确保 AudioContext 已经准备好
-            const resumeAudioContext = () => {
-                const context = this.sound.context;
-                // 恢复 AudioContext
-                if (context.state === 'suspended') {
-                    context.resume();
-                }
-                // 播放背景音乐
-                this.bgm.play();
-                // 移除按钮和事件监听
-                document.body.removeChild(hiddenButton);
-            };
-
-            // 添加真实的点击事件监听
-            hiddenButton.addEventListener('click', resumeAudioContext);
-
-            // 模拟点击
-            requestAnimationFrame(() => {
-                hiddenButton.dispatchEvent(new MouseEvent('click', {
-                    view: window,
-                    bubbles: true,
-                    cancelable: true
-                }));
+        // 创建并播放背景音乐
+        try {
+            this.bgm = this.sound.add('ecommerce-bgm', {
+                loop: true,
+                volume: 0.5
             });
+            this.bgm.play();
+        } catch (error) {
+            console.warn('Background music failed to load:', error);
         }
 
-        // 首先放置角色，作为参考点
+        // 添加选中的角色
         const characterType = window.gameState.character || 'female';
         this.player = this.add.sprite(
-            width * 0.2,  // 调整到左侧20%处
-            height * 0.65,  // 调整到65%的高度
+            width * 0.10,  // 修改为与 CultureScene 相同的位置
+            height * 0.75,  // 修改为与 CultureScene 相同的位置
             characterType
-        )
-        .setScale(height * 0.001)
-        .setDepth(2);  // 确保角色在最上层
+        ).setScale(height * 0.001)  // 使用相同的缩放比例
+        .setDepth(99);  // 使用相同的深度值
 
-        // 传送带位置和尺寸调整
-        this.conveyor = this.add.image(
-            width * 0.6,  // 中心点位于60%处
-            height * 0.75,  // 调整传送带高度
-            'conveyor'
-        )
-        .setDisplaySize(width * 0.8, height * 0.1)  // 增加传送带宽度到80%屏幕宽度
-        .setDepth(0);
+        // 添加返回按钮
+        const backButton = this.add.image(80, 40, 'back')
+            .setScale(0.6)
+            .setDepth(2)
+            .setInteractive()
+            .on('pointerdown', () => {
+                // 停止背景音乐
+                if (this.bgm) {
+                    this.bgm.stop();
+                    this.bgm.destroy();
+                }
+                // 返回场景选择
+                this.scene.start('SceneSelectScene');
+            });
 
-        // 调整箱子位置，使其位于角色脚下
-        this.openBox = this.add.image(
-            this.player.x + width * 0.02,  // 略微偏右
-            this.player.y + height * 0.08,  // 位于角色脚下
-            'box-open'
-        )
-        .setScale(height * 0.0006)
-        .setInteractive()
-        .setDepth(1);  // 确保箱子在角色和传送带之间
+        // 添加返回按钮的悬停效果
+        backButton.on('pointerover', () => {
+            backButton.setScale(0.65);
+        });
+        
+        backButton.on('pointerout', () => {
+            backButton.setScale(0.6);
+        });
 
-        // 创建 UI 文本
+        // 初始化状态文本（显示0s）
         this.timeText = this.add.text(width - 200, 20, 'Time: 0s', {
-            fontSize: '24px',
+            fontSize: Math.min(width, height) * 0.03 + 'px',
             fill: '#000',
             backgroundColor: '#ffffff80',
             padding: { x: 15, y: 8 }
         }).setDepth(2);
 
         this.boxText = this.add.text(width - 200, 70, `Box: ${this.boxCount}/${this.targetBoxCount}`, {
-            fontSize: '24px',
+            fontSize: Math.min(width, height) * 0.03 + 'px',
             fill: '#000',
             backgroundColor: '#ffffff80',
             padding: { x: 15, y: 8 }
         }).setDepth(2);
 
-        // 修改返回按钮实现
-        const backButton = this.add.image(80, 40, 'back')
-            .setScale(0.6)
-            .setDepth(2)
-            .setInteractive()
-            .on('pointerdown', () => {
-                this.scene.start('SceneSelectScene');
-            });
+        // 检查是否已经获得奖牌，如果没有则显示欢迎弹窗
+        if (window.gameState.medals.ecommerce) {
+            this.startGame();
+        } else {
+            this.showWelcomeDialog();
+        }
+
+        // 传送带位置和尺寸调整
+        this.conveyor = this.add.image(
+            width * 0.58,
+            height * 0.71,
+            'conveyor'
+        ).setScale(height*0.0015,height * 0.00065);
+
+        // 打开的箱子位置调整
+        this.openBox = this.add.image(
+            width * 0.2,
+            height * 0.80,
+            'box-open'
+        ).setScale(height * 0.0005)
+        .setInteractive()
+        .setDepth(1);
 
         // 添加悬停效果
-        backButton.on('pointerover', () => {
-            backButton.setScale(0.65);
-        });
-
-        backButton.on('pointerout', () => {
-            backButton.setScale(0.6);
-        });
-
-        // 初始化键盘控制
-        this.cursors = this.input.keyboard.createCursorKeys();
-
-        // 添加箱子的提示动画
-        this.addBoxHintAnimations();
-
-        // 添加箱子的点击事件
         this.openBox.on('pointerover', () => {
             this.openBox.setTint(0x88ff88);
         });
@@ -171,62 +137,167 @@ export default class EcommerceScene extends Phaser.Scene {
         this.openBox.on('pointerdown', () => {
             if (!this.isPlaying || this.isPackingAnimating) return;
             
-            // 暂停背景音乐
-            this.bgm.pause();
+           
             
             this.playPackingAnimation();
             this.sealAndMoveBox();
             
             // 动画完成后恢复背景音乐
-            this.time.delayedCall(2500, () => {
-                if (this.bgm && !this.bgm.isPlaying) {
-                    this.bgm.resume();
-                }
-            });
+            // this.time.delayedCall(2500, () => {
+            //     if (this.bgm && !this.bgm.isPlaying) {
+            //         this.bgm.resume();
+            //     }
+            // });
         });
 
-        this.showStartPrompt();
+        // 初始化键盘控制
+        this.cursors = this.input.keyboard.createCursorKeys();
+
+        // 添加箱子的提示动画
+        this.addBoxHintAnimations();
     }
 
-    showStartPrompt() {
-        // 直接开始游戏，不显示提示文本
-        this.isPlaying = true;
-        this.gameStartTime = Date.now();
-        
-        // 开始计时
-        this.timer = this.time.addEvent({
-            delay: 1000,
-            callback: this.updateTimer,
-            callbackScope: this,
-            loop: true
-        });
+    showWelcomeDialog() {
+        const width = this.scale.width;
+        const height = this.scale.height;
 
-        // 3. 添加发光效果（替代闪光效果）
-        const glow = this.add.circle(
-            this.openBox.x,
-            this.openBox.y,
-            30,
-            0xffff00,
-            0.6
+        // 创建半透明黑色遮罩
+        const overlay = this.add.graphics()
+            .setDepth(98);
+        overlay.fillStyle(0x000000, 0.3);
+        overlay.fillRect(0, 0, width, height);
+
+        // 弹窗尺寸和位置
+        const boxWidth = width * 0.8;
+        const boxHeight = height * 0.25;
+        const boxY = height * 0.75;
+
+        // 创建弹窗背景
+        const messageBox = this.add.graphics()
+            .setDepth(98);
+        messageBox.fillStyle(0xE6D5AC, 0.95);
+        messageBox.lineStyle(4, 0x8B4513);
+        messageBox.fillRoundedRect(
+            width/2 - boxWidth/2,
+            boxY - boxHeight/2,
+            boxWidth,
+            boxHeight,
+            20
+        );
+        messageBox.strokeRoundedRect(
+            width/2 - boxWidth/2,
+            boxY - boxHeight/2,
+            boxWidth,
+            boxHeight,
+            20
         );
 
-        this.tweens.add({
-            targets: glow,
-            alpha: 0,
-            scale: 1.5,
-            duration: 1500,
-            repeat: -1,
-            ease: 'Cubic.easeOut'
-        });
+        // 创建文本容器和遮罩
+        const textContainer = this.add.container(0, 0).setDepth(99);
+        const textMask = this.add.graphics()
+            .fillStyle(0xffffff)
+            .fillRect(
+                width/2 - boxWidth/2,
+                boxY - boxHeight/2,
+                boxWidth,
+                boxHeight
+            );
+        textContainer.setMask(new Phaser.Display.Masks.GeometryMask(this, textMask));
 
-        // 4. 当点击箱子时，移除所有提示动画
-        this.openBox.on('pointerdown', () => {
-            if (this.isPlaying) {
-                // 移除提示效果
-                glow.destroy();
-                // 重置箱子位置
-                this.openBox.y = this.conveyor.y - this.conveyor.displayHeight * 0.3;
+        // 创建固定数量的文本对象
+        const textObjects = [];
+        const maxLines = 4;
+        const startY = boxY - boxHeight/2 + 25;
+        const lineSpacing = boxHeight / 5;
+
+        // 创建文本对象
+        for (let i = 0; i < maxLines; i++) {
+            const text = this.add.text(
+                width/2 - boxWidth/2 + 40,
+                startY + i * lineSpacing,
+                '',
+                {
+                    fontSize: '20px',
+                    fill: '#4A3000',
+                    align: 'left',
+                    wordWrap: { width: boxWidth - 80 }
+                }
+            )
+            .setOrigin(0, 0.5);
+            textObjects.push(text);
+            textContainer.add(text);
+        }
+
+        // 打字机效果
+        const typewriterEffect = (textObject, fullText) => {
+            return new Promise((resolve) => {
+                let currentText = '';
+                let currentIndex = 0;
+                
+                const timer = this.time.addEvent({
+                    delay: 30,
+                    callback: () => {
+                        if (!textObject || !textObject.scene) {
+                            timer.destroy();
+                            resolve();
+                            return;
+                        }
+
+                        if (currentIndex < fullText.length) {
+                            currentText += fullText[currentIndex];
+                            textObject.setText(currentText);
+                            currentIndex++;
+                        } else {
+                            timer.destroy();
+                            resolve();
+                        }
+                    },
+                    loop: true
+                });
+
+                this.events.once('shutdown', () => {
+                    timer.destroy();
+                    resolve();
+                });
+            });
+        };
+
+        // 欢迎文本内容
+        const allTextLines = [
+            "Dear Pakistani friend, welcome to the village express station!",
+            "As logistics commander, click to pack parcels marked for cities.",
+            "Each package you seal helps better the urban developent."
+        ];
+
+        // 显示文本
+        const showNextLine = async (index) => {
+            if (index < allTextLines.length) {
+                await typewriterEffect(textObjects[index], allTextLines[index]);
+                if (index + 1 < allTextLines.length) {
+                    await showNextLine(index + 1);
+                }
             }
+        };
+
+        // 开始显示第一行
+        showNextLine(0);
+
+        // 点击任意位置关闭弹窗并开始游戏
+        this.input.once('pointerdown', () => {
+            // 清理弹窗
+            messageBox.destroy();
+            overlay.destroy();
+            textContainer.destroy();
+            textMask.destroy();
+            textObjects.forEach(text => {
+                if (text && text.scene) text.destroy();
+            });
+
+            // 开始游戏
+            this.startGame();
+
+            // 记录开始时间
+            this.gameStartTime = Date.now();
         });
     }
 
@@ -312,6 +383,8 @@ export default class EcommerceScene extends Phaser.Scene {
         if (this.boxCount >= this.targetBoxCount) {
             return;
         }
+         // 播放打包音效
+         this.sound.play('package-sound', { volume: 0.8 });
 
         // 立即更新计数
         this.boxCount++;
@@ -325,7 +398,7 @@ export default class EcommerceScene extends Phaser.Scene {
             this.openBox.x,
             this.openBox.y,
             'box-closed'
-        ).setScale(0.4);
+        ).setScale(this.scale.height*0.0004);
         
         // 标记箱子为移动状态
         sealedBox.isMoving = true;
@@ -337,8 +410,8 @@ export default class EcommerceScene extends Phaser.Scene {
         // 箱子动画序列
         this.tweens.add({
             targets: sealedBox,
-            scaleX: 0.45,
-            scaleY: 0.35,
+            scaleX: 0.25,
+            scaleY: 0.25,
             duration: 150,
             yoyo: true,
             ease: 'Quad.easeOut',
@@ -347,8 +420,8 @@ export default class EcommerceScene extends Phaser.Scene {
 
                 this.tweens.add({
                     targets: sealedBox,
-                    x: this.conveyor.x - this.conveyor.width * 0.18,
-                    y: this.conveyor.y - 100,
+                    x: this.conveyor.x - this.conveyor.width * 0.25,
+                    y: this.conveyor.y - 80, //表示传送的箱子的高低
                     duration: 300,
                     ease: 'Back.easeOut',
                     onComplete: () => {
@@ -378,6 +451,7 @@ export default class EcommerceScene extends Phaser.Scene {
                                             if (this.timer) {
                                                 this.timer.destroy();
                                             }
+                                            console.log('箱子的数量',this.boxCount,this.targetBoxCount, this.movingBoxes.length);
                                             this.onGameComplete();
                                         }
                                     }
@@ -402,31 +476,30 @@ export default class EcommerceScene extends Phaser.Scene {
 
     // 修改箱子打包计数逻辑
     onBoxPacked() {
+        console.log('onBoxPacked called', this.isPlaying, this.isPackingAnimating);
         if (!this.isPlaying || this.isPackingAnimating) return;
         
         this.boxCount++;
+        console.log('Box packed, current count:', this.boxCount);
         this.boxText.setText(`Box: ${this.boxCount}/${this.targetBoxCount}`);
         
         // 只在达到目标数量时禁用进一步打包，但不立即结束游戏
         if (this.boxCount >= this.targetBoxCount) {
+            console.log('Box packed, current count:', this.boxCount);
             this.isPlaying = false;
+            this.onGameComplete();
         }
     }
 
-    showCompletionMessage(medal) {
-        this.isPlaying = false;
-        
-        // 清理之前可能存在的完成界面元素
-        if (this.completionElements) {
-            this.completionElements.forEach(element => element.destroy());
+    onGameComplete() {
+    if (this.bgm) {
+            this.bgm.stop();
+            this.bgm.destroy();
         }
-        this.completionElements = [];
-
-        // 获取游戏完成时间
+        // 先显示完成界面
         const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
-
-        // 确定奖牌等级
         let medalLevel = null;
+        console.log('onGameComplete called', elapsed);
         if (elapsed <= this.medalTimes.gold) {
             medalLevel = 'gold';
         } else if (elapsed <= this.medalTimes.silver) {
@@ -434,17 +507,40 @@ export default class EcommerceScene extends Phaser.Scene {
         } else {
             medalLevel = 'bronze';
         }
+        console.log('Medal level:', medalLevel);
 
         // 更新玩家奖励
         if (!window.gameState) window.gameState = {};
         if (!window.gameState.medals) window.gameState.medals = {};
         window.gameState.medals.ecommerce = medalLevel;
+        
+        // 显示完成界面并同时播放音效
+        this.showCompletionMessage(medalLevel);
+    }
+
+    showCompletionMessage(medalLevel) {
+        // 播放完成音效
+        const finishSound = this.sound.add('finish', { 
+            volume: 0.8,
+            loop: false
+        });
+        finishSound.play();
+
+        // 音效播放完成后清理资源
+        finishSound.once('complete', () => {
+            finishSound.destroy();
+        });
+
+        // 显示完成界面
+        this.isPlaying = false;
+        
+        // 获取游戏完成时间
+        const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
 
         // 添加奖励背景
         const bg = this.add.image(this.scale.width/2, this.scale.height/2, 'reward-bg')
             .setDisplaySize(this.scale.width, this.scale.height)
             .setDepth(5);
-        this.completionElements.push(bg);
 
         // 添加 CONGRATULATIONS 标题
         const title = this.add.text(this.scale.width/2, this.scale.height * 0.2, 'CONGRATULATIONS', {
@@ -456,13 +552,11 @@ export default class EcommerceScene extends Phaser.Scene {
         })
         .setOrigin(0.5)
         .setDepth(6);
-        this.completionElements.push(title);
 
         // 添加奖牌图片
-        const medalImage = this.add.image(this.scale.width/2, this.scale.height * 0.45, `${medalLevel}-medal`)
+        const medalImage = this.add.image(this.scale.width/2, this.scale.height * 0.45, `${medalLevel}`)
             .setScale(0.4)
             .setDepth(6);
-        this.completionElements.push(medalImage);
 
         // 添加 PASS 文本
         const passText = this.add.text(this.scale.width/2, this.scale.height * 0.65, 
@@ -475,7 +569,6 @@ export default class EcommerceScene extends Phaser.Scene {
         })
         .setOrigin(0.5)
         .setDepth(6);
-        this.completionElements.push(passText);
 
         // 添加完成时间文本
         const timeText = this.add.text(this.scale.width/2, this.scale.height * 0.75, 
@@ -485,7 +578,6 @@ export default class EcommerceScene extends Phaser.Scene {
         })
         .setOrigin(0.5)
         .setDepth(6);
-        this.completionElements.push(timeText);
 
         // 添加按钮
         const buttonY = this.scale.height * 0.85;
@@ -496,14 +588,12 @@ export default class EcommerceScene extends Phaser.Scene {
             .setScale(0.8)
             .setInteractive()
             .setDepth(6);
-        this.completionElements.push(tryAgainBtn);
 
         // 其他游戏按钮
         const otherGamesBtn = this.add.image(this.scale.width/2 + buttonSpacing, buttonY, 'other-games-btn')
             .setScale(0.8)
             .setInteractive()
             .setDepth(6);
-        this.completionElements.push(otherGamesBtn);
 
         // 添加按钮交互效果
         [tryAgainBtn, otherGamesBtn].forEach(btn => {
@@ -524,24 +614,14 @@ export default class EcommerceScene extends Phaser.Scene {
             this.scene.start('SceneSelectScene');
         });
 
-        // 清理之前的动画
-        if (this.medalTween) {
-            this.medalTween.stop();
-            this.medalTween.remove();
-        }
-        if (this.medalBounceTween) {
-            this.medalBounceTween.stop();
-            this.medalBounceTween.remove();
-        }
-
         // 添加奖牌动画效果
-        this.medalTween = this.tweens.add({
+        this.tweens.add({
             targets: medalImage,
             scale: { from: 0.2, to: 0.4 },
             duration: 1000,
             ease: 'Back.out',
             onComplete: () => {
-                this.medalBounceTween = this.tweens.add({
+                this.tweens.add({
                     targets: medalImage,
                     scale: { from: 0.4, to: 0.425 },
                     duration: 1500,
@@ -551,22 +631,6 @@ export default class EcommerceScene extends Phaser.Scene {
                 });
             }
         });
-
-        // 停止背景音乐
-        if (this.bgm) {
-            this.bgm.stop();
-        }
-    }
-
-    // 辅助方法：获取奖牌价值用于比较
-    getMedalValue(medalType) {
-        const values = {
-            'gold': 3,
-            'silver': 2,
-            'bronze': 1,
-            null: 0
-        };
-        return values[medalType] || 0;
     }
 
     // 添加更新方法
@@ -666,14 +730,19 @@ export default class EcommerceScene extends Phaser.Scene {
         
         // 加载通用资源
         this.load.image('back', 'images/common/back.png');                          // 返回按钮
-        this.load.image('button', 'images/common/button.png');                      // 按钮背景
+                        // 按钮背景
         
         // 加载奖牌和完成界面相关资源
-        this.load.image('gold-medal', 'images/common/gold.png');
-        this.load.image('silver-medal', 'images/common/silver.png');
-        this.load.image('bronze-medal', 'images/common/bronze.png');
+        this.load.image('gold', 'images/common/gold.png');
+        this.load.image('silver', 'images/common/silver.png');
+        this.load.image('bronze', 'images/common/bronze.png');
         this.load.image('try-again-btn', 'images/common/try-again.png');
         this.load.image('other-games-btn', 'images/common/other-games.png');
+        this.load.image('reward-bg', 'images/common/reward-bg.png');
+        this.load.audio('finish', 'audio/finish.mp3');
+        
+        // 加载打包音效
+        this.load.audio('package-sound', 'audio/package.mp3');
     }
 
     // 添加一个窗口大小变化的监听器
@@ -682,19 +751,20 @@ export default class EcommerceScene extends Phaser.Scene {
         const height = this.scale.height;
 
         // 更新角色位置和大小
-        this.player.setPosition(width * 0.2, height * 0.65)
+        this.player.setPosition(width * 0.10, height * 0.75)
             .setScale(height * 0.001);
 
         // 更新传送带位置和大小
-        this.conveyor.setPosition(width * 0.6, height * 0.75)
-            .setDisplaySize(width * 0.8, height * 0.1);
+        if (this.conveyor) {
+            this.conveyor.setPosition(width * 0.26, height * 0.65)
+                .setScale(height * 0.001);
+        }
 
         // 更新箱子位置和大小
-        this.openBox.setPosition(
-            this.player.x + width * 0.02,
-            this.player.y + height * 0.08
-        )
-        .setScale(height * 0.0006);
+        if (this.openBox) {
+            this.openBox.setPosition(width * 0.2, height * 0.65)
+                .setScale(height * 0.001);
+        }
 
         // 更新返回按钮位置
         this.children.list.forEach(child => {
@@ -704,35 +774,10 @@ export default class EcommerceScene extends Phaser.Scene {
         });
     }
 
-    onGameComplete() {
-        const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
-        let medal = null;
-
-        // 根据完成时间确定奖牌
-        if (elapsed <= this.medalTimes.gold) {
-            medal = 'gold';
-        } else if (elapsed <= this.medalTimes.silver) {
-            medal = 'silver';
-        } else if (elapsed <= this.medalTimes.bronze) {
-            medal = 'bronze';
-        }
-
-        // 更新玩家奖励
-        playerManager.updateGameMedal('ecommerce', medal);
-
-        // 显示完成消息
-        this.showCompletionMessage(medal);
-    }
-
     // 在场景重启或切换时清理动画
     shutdown() {
-        if (this.medalTween) {
-            this.medalTween.stop();
-            this.medalTween.remove();
-        }
-        if (this.medalBounceTween) {
-            this.medalBounceTween.stop();
-            this.medalBounceTween.remove();
+        if (this.timer) {
+            this.timer.remove();
         }
         if (this.bgm) {
             this.bgm.stop();
@@ -752,13 +797,8 @@ export default class EcommerceScene extends Phaser.Scene {
         this.isPackingAnimating = false;
 
         // 清理之前的动画
-        if (this.medalTween) {
-            this.medalTween.stop();
-            this.medalTween.remove();
-        }
-        if (this.medalBounceTween) {
-            this.medalBounceTween.stop();
-            this.medalBounceTween.remove();
+        if (this.timer) {
+            this.timer.remove();
         }
 
         // 清理之前的完成界面元素
