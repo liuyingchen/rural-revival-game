@@ -195,8 +195,8 @@ export default class CharacterSelectScene extends Phaser.Scene {
         });
 
         // 添加返回按钮
-        const backButton = this.add.image(80, 40, 'back')
-            .setScale(0.6)
+        const backButton = this.add.image(width * 0.05, height * 0.1, 'back')
+            .setScale(0.5)
             .setDepth(2)
             .setInteractive()
             .on('pointerover', () => {

@@ -46,9 +46,10 @@ export default class AgricultureScene extends Phaser.Scene {
             .setDepth(1);
 
         // 修改返回按钮的处理
-        const backButton = this.add.image(80, 40, 'back')
-            .setScale(0.6)
-            .setDepth(2)
+        
+        const backButton = this.add.image(this.width * 0.05, this.height * 0.1, 'back')
+            .setScale(0.5)
+            .setDepth(100)
             .setInteractive()
             .on('pointerdown', () => {
                 // 停止所有音频
@@ -115,7 +116,7 @@ export default class AgricultureScene extends Phaser.Scene {
         this.addDroneHintAnimations();
 
         // 添加时间显示
-        this.timeText = this.add.text(this.width - 150, 20, 'Time: 0s', {
+        this.timeText = this.add.text(this.width*0.80, this.height * 0.1, 'Time: 0s', {
             fontSize: '24px',
             fill: '#000',
             backgroundColor: '#ffffff80',
@@ -296,7 +297,7 @@ export default class AgricultureScene extends Phaser.Scene {
 
         // 添加完成时间文本
         const timeText = this.add.text(this.width/2, this.height * 0.75, 
-            `Times: ${this.gameTime}s`, {
+            `Time: ${this.gameTime}s`, {
             fontSize: '24px',
             fill: '#FFFFFF'
         })
@@ -737,11 +738,11 @@ export default class AgricultureScene extends Phaser.Scene {
         // 创建半透明黑色背景
         const overlay = this.add.graphics()
             .setDepth(98);
-        overlay.fillStyle(0x000000, 0.7);
+        overlay.fillStyle(0x000000, 0.5);
         overlay.fillRect(0, 0, this.scale.width, this.scale.height);
 
         // 弹窗尺寸和位置
-        const boxWidth = this.scale.width * 0.8;     // 弹窗宽度改为屏幕宽度的80%
+        const boxWidth = this.scale.width * 0.75;     // 弹窗宽度改为屏幕宽度的80%
         const boxHeight = this.scale.height * 0.25;   // 弹窗高度保持不变
         const boxY = this.scale.height * 0.75;
 
@@ -764,6 +765,17 @@ export default class AgricultureScene extends Phaser.Scene {
             boxHeight,
             20
         );
+        const textContainer = this.add.container(0, 0).setDepth(99);
+        const textMask = this.add.graphics()
+            .fillStyle(0xffffff)
+            .fillRoundedRect(
+                this.scale.width/2 - boxWidth/2,
+                boxY - boxHeight/2,
+                boxWidth,
+                boxHeight,
+                20
+            );
+        textContainer.setMask(new Phaser.Display.Masks.GeometryMask(this, textMask));
 
         // 修改文本内容
         const allTextLines = [
@@ -772,67 +784,14 @@ export default class AgricultureScene extends Phaser.Scene {
             "Place the wooden parts correctly to preserve this craft. Ready to be a cultural guardian?"
         ];
 
-        // 创建文本容器和遮罩
-        const textContainer = this.add.container(0, 0).setDepth(99);
-        const textMask = this.add.graphics()
-            .fillStyle(0xffffff)
-            .fillRect(
-                this.scale.width/2 - boxWidth/2,
-                boxY - boxHeight/2,
-                boxWidth,
-                boxHeight
-            );
-        textContainer.setMask(new Phaser.Display.Masks.GeometryMask(this, textMask));
-
-        // 创建4个固定的文本对象
-        const textObjects = [];
-        const maxLines = 4;
-        const startY = boxY - boxHeight/2 + 25;
-        const lineSpacing = boxHeight / 5;
-        let currentStartIndex = 0;
-
-        // 创建文本对象 - 修改对齐方式
-        for (let i = 0; i < maxLines; i++) {
-            const text = this.add.text(
-                this.scale.width/2 - boxWidth/2 + 40,  // 左对齐，留出边距
-                startY + i * lineSpacing,
-                '',
-                {
-                    fontSize: '20px',
-                    fill: '#4A3000',
-                    align: 'left',  // 改为左对齐
-                    wordWrap: { 
-                        width: boxWidth - 80,
-                        useAdvancedWrap: true
-                    }
-                }
-            )
-            .setOrigin(0, 0.5)  // x轴原点设为0，实现左对齐
-            .setAlpha(1);
-
-            textObjects.push(text);
-            textContainer.add(text);
-        }
-
-        // 获取换行后的所有文本行
-        let allWrappedLines = [];
-        allTextLines.forEach(paragraph => {
-            const tempText = this.add.text(-1000, -1000, paragraph, {
-                fontSize: '20px',
-                wordWrap: { width: boxWidth - 80, useAdvancedWrap: true }
-            });
-            allWrappedLines = allWrappedLines.concat(tempText.getWrappedText());
-            tempText.destroy();
-        });
-
-        // 打字机效果 - 单行文本显示
+        // 打字机效果
         const typewriterEffect = (textObject, fullText) => {
             return new Promise((resolve) => {
                 let currentText = '';
                 let currentIndex = 0;
                 
                 const timer = this.time.addEvent({
-                    delay: 20,  // 打字速度再快一点，从30ms改为20ms
+                    delay: 20,
                     callback: () => {
                         if (currentIndex < fullText.length) {
                             currentText += fullText[currentIndex];
@@ -840,7 +799,6 @@ export default class AgricultureScene extends Phaser.Scene {
                             currentIndex++;
                         } else {
                             timer.destroy();
-                            // 添加一个短暂延迟确保文本完全显示
                             setTimeout(resolve, 100);
                         }
                     },
@@ -849,80 +807,50 @@ export default class AgricultureScene extends Phaser.Scene {
             });
         };
 
-        // 逐行显示文本
-        const showTextLineByLine = async () => {
-            // 先清空所有文本
-            textObjects.forEach(textObj => textObj.setText(''));
-            
-            // 严格按顺序显示每一行
-            for (let i = 0; i < maxLines; i++) {
-                const line = allWrappedLines[currentStartIndex + i] || '';
-                if (line) {
-                    await typewriterEffect(textObjects[i], line);
-                }
-            }
-            
-            // 所有行都显示完成后，如果有更多行才开始滚动效果
-            if (allWrappedLines.length > maxLines) {
-                await new Promise(resolve => setTimeout(resolve, 200)); // 等待200ms后开始滚动
-                startScrolling();
-            }
-        };
+        // 添加一个标志来追踪是否正在显示文本
+        let isDisplayingText = true;
 
-        // 滚动到下一组文本
-        const scrollToNextLines = async () => {
-            currentStartIndex++;
-            if (currentStartIndex < allWrappedLines.length - maxLines + 1) {
-                // 检查第一个文本对象是否存在
-                if (!textObjects[0] || !textObjects[0].scene) return;
+        // 方案1: 在 displayText 函数中维护文本对象数组
+        async function displayText() {
+            const startY = boxY - boxHeight/2 + 40;
+            const lineSpacing = 40;
+            const textObjects = []; // 创建数组存储文本对象
 
-                // 只滚动第一行
-                await new Promise((resolve) => {
-                    this.tweens.add({
-                        targets: textObjects[0],
-                        y: textObjects[0].y - lineSpacing,
-                        duration: 200,
-                        ease: 'Cubic.easeInOut',
-                        onComplete: () => setTimeout(resolve, 100)  // 添加短暂延迟
-                    });
-                });
-
-                // 其他行向上移动一格
-                for (let i = 0; i < maxLines - 1; i++) {
-                    // 检查文本对象是否存在
-                    if (textObjects[i] && textObjects[i].scene && textObjects[i + 1] && textObjects[i + 1].scene) {
-                        textObjects[i].setText(textObjects[i + 1].text);
-                        textObjects[i].y = startY + i * lineSpacing;
+            // 逐行创建并显示文本
+            for (let i = 0; i < allTextLines.length; i++) {
+                const textObj = this.add.text(
+                    this.scale.width/2 - boxWidth/2 + 40,
+                    startY + (i * lineSpacing),
+                    '',
+                    {
+                        fontSize: '20px',
+                        fill: '#4A3000',
+                        align: 'left',
+                        wordWrap: { 
+                            width: boxWidth - 80,
+                            useAdvancedWrap: true
+                        }
                     }
-                }
+                ).setOrigin(0, 0.5)
+                .setDepth(99);
 
-                // 最后一行清空并重置位置
-                if (textObjects[maxLines - 1] && textObjects[maxLines - 1].scene) {
-                    textObjects[maxLines - 1].setText('');
-                    textObjects[maxLines - 1].y = startY + (maxLines - 1) * lineSpacing;
+                textObjects.push(textObj); // 将文本对象添加到数组
 
-                    // 显示新的一行
-                    const newLine = allWrappedLines[currentStartIndex + maxLines - 1];
-                    if (newLine) {
-                        await typewriterEffect(textObjects[maxLines - 1], newLine);
-                        // 等待一下确保文本完全显示
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                    }
+                await typewriterEffect(textObj, allTextLines[i]);
+                
+                if (i < allTextLines.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 300));
                 }
             }
-        };
+            return textObjects; // 返回文本对象数组
+        }
 
-        // 开始滚动效果
-        const startScrolling = () => {
-            this.time.addEvent({
-                delay: 300,  // 从200ms改为300ms，给打字效果更多时间
-                callback: scrollToNextLines,
-                loop: true
-            });
-        };
-
-        // 开始初始显示
-        showTextLineByLine();
+        // 调用显示文本函数并存储返回的文本对象
+        let textObjects = [];
+        displayText.call(this).then(objects => {
+            textObjects = objects;
+            isDisplayingText = false;
+        });
 
         // 创建并播放背景音乐
         try {
@@ -944,11 +872,44 @@ export default class AgricultureScene extends Phaser.Scene {
             // 清理所有对象
             messageBox.destroy();
             overlay.destroy();
-            textContainer.destroy();
-            textMask.destroy();
-            textObjects.forEach(text => {
-                if (text && text.scene) text.destroy();
-            });
+            
+            // 如果正在显示文本,清理所有文本相关的对象
+            if (isDisplayingText) {
+                // 清理在textContainer中的文本对象
+                if (textContainer) {
+                    textContainer.list.forEach(text => {
+                        if (text instanceof Phaser.GameObjects.Text) {
+                            text.destroy();
+                        }
+                    });
+                }
+                // 清理已经创建但还未加入数组的文本
+                this.children.list.forEach(child => {
+                    if (child instanceof Phaser.GameObjects.Text && 
+                        child !== this.timeText && // 排除时间显示文本
+                        child.x >= this.scale.width/2 - boxWidth/2 && // 检查文本是否在对话框范围内
+                        child.x <= this.scale.width/2 + boxWidth/2 &&
+                        child.y >= boxY - boxHeight/2 &&
+                        child.y <= boxY + boxHeight/2) {
+                        child.destroy();
+                    }
+                });
+            } else {
+                // 使用已完成的文本对象数组清理
+                if (textObjects) {
+                    textObjects.forEach(text => {
+                        if (text && text.scene) text.destroy();
+                    });
+                }
+            }
+            
+            // 清理文本容器和遮罩
+            if (textContainer) {
+                textContainer.destroy();
+            }
+            if (textMask) {
+                textMask.destroy();
+            }
 
             // 重置并初始化游戏状态
             this.isPlaying = true;
@@ -977,7 +938,7 @@ export default class AgricultureScene extends Phaser.Scene {
     updateTimer() {
         if (this.isPlaying) {
             this.gameTime = Math.floor((Date.now() - this.gameStartTime) / 1000);
-            this.timeText.setText(`Times: ${this.gameTime}s`);
+            this.timeText.setText(`Time: ${this.gameTime}s`);
         }
     }
 

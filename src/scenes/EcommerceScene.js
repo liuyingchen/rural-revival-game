@@ -64,7 +64,7 @@ export default class EcommerceScene extends Phaser.Scene {
         .setDepth(99);  // 使用相同的深度值
 
         // 添加返回按钮
-        const backButton = this.add.image(80, 40, 'back')
+        const backButton = this.add.image(width * 0.05, height * 0.1, 'back')
             .setScale(0.6)
             .setDepth(2)
             .setInteractive()
@@ -572,7 +572,7 @@ export default class EcommerceScene extends Phaser.Scene {
 
         // 添加完成时间文本
         const timeText = this.add.text(this.scale.width/2, this.scale.height * 0.75, 
-            `完成时间: ${elapsed}秒`, {
+            `Time: ${elapsed}s`, {
             fontSize: '24px',
             fill: '#FFFFFF'
         })
@@ -769,7 +769,7 @@ export default class EcommerceScene extends Phaser.Scene {
         // 更新返回按钮位置
         this.children.list.forEach(child => {
             if (child.texture && child.texture.key === 'back') {
-                child.setPosition(80, 40);
+                child.setPosition(this.scale.width * 0.05, this.scale.height * 0.1);
             }
         });
     }

@@ -61,7 +61,8 @@ export default class CultureScene extends Phaser.Scene {
 
         // 添加背景
         this.add.image(width/2, height/2, 'culture-bg')
-            .setDisplaySize(width, height);
+            .setDisplaySize(width, height)
+            .setDepth(0);
 
         // 创建并播放背景音乐
         try {
@@ -81,12 +82,12 @@ export default class CultureScene extends Phaser.Scene {
             this.scale.height * 0.75,
             characterType
         ).setScale(this.scale.height * 0.001)
-        .setDepth(99);
+        .setDepth(100);
 
         // 添加返回按钮
-        const backButton = this.add.image(80, 40, 'back')
-            .setScale(0.6)
-            .setDepth(2)
+        const backButton = this.add.image(width * 0.05, height * 0.1, 'back')
+            .setScale(0.5)
+            .setDepth(5)
             .setInteractive()
             .on('pointerdown', () => {
                 if (this.bgm) {
@@ -101,14 +102,14 @@ export default class CultureScene extends Phaser.Scene {
             fill: '#000',
             backgroundColor: '#ffffff80',
             padding: { x: 15, y: 8 }
-        }).setDepth(2);
+        }).setDepth(5);
 
         this.pairsText = this.add.text(width - 200, 70, 'Pairs: 0/4', {
             fontSize: Math.min(width, height) * 0.03 + 'px',
             fill: '#000',
             backgroundColor: '#ffffff80',
             padding: { x: 15, y: 8 }
-        }).setDepth(2);
+        }).setDepth(5);
 
         // 显示欢迎弹窗
         this.showWelcomeDialog();
@@ -118,12 +119,12 @@ export default class CultureScene extends Phaser.Scene {
     showWelcomeDialog() {
         // 创建半透明黑色背景，降低透明度
         const overlay = this.add.graphics()
-            .setDepth(98);
+            .setDepth(1);
         overlay.fillStyle(0x000000, 0.3);  // 将透明度从0.7改为0.3
         overlay.fillRect(0, 0, this.scale.width, this.scale.height);
 
         // 弹窗尺寸和位置
-        const boxWidth = this.scale.width * 0.8;     // 弹窗宽度为屏幕宽度的80%
+        const boxWidth = this.scale.width * 0.78;     // 弹窗宽度为屏幕宽度的80%
         const boxHeight = this.scale.height * 0.25;   // 弹窗高度保持不变
         const boxY = this.scale.height * 0.75;
 
@@ -159,7 +160,7 @@ export default class CultureScene extends Phaser.Scene {
         const textContainer = this.add.container(0, 0).setDepth(99);
         const textMask = this.add.graphics()
             .fillStyle(0xffffff)
-            .fillRect(
+            .fillRoundedRect(
                 this.scale.width/2 - boxWidth/2,
                 boxY - boxHeight/2,
                 boxWidth,
@@ -270,8 +271,8 @@ export default class CultureScene extends Phaser.Scene {
 
         // 添加半透明黑色遮罩层
         const overlay = this.add.graphics()
-            .setDepth(-1);
-        overlay.fillStyle(0x000000, 0.7);  // 修改这里的透明度，0.7 表示70%不透明度
+            .setDepth(1);
+        overlay.fillStyle(0x000000, 0.5);  // 修改这里的透明度，0.7 表示70%不透明度
         overlay.fillRect(0, 0, this.scale.width, this.scale.height);
 
         // 基础图像位置
@@ -281,7 +282,7 @@ export default class CultureScene extends Phaser.Scene {
         // 基础图像（other.png）
         this.baseImage = this.add.image(baseX, baseY, 'other')
             .setScale(baseScale)
-            .setDepth(1);
+            .setDepth(2);
 
         // 获取拼图块尺寸
         const pieceWidth = this.textures.get('piece-22').getSourceImage().width * baseScale;
@@ -303,7 +304,7 @@ export default class CultureScene extends Phaser.Scene {
 
             return this.add.image(randomX, randomY, piece.key)
                 .setScale(baseScale)
-                .setDepth(2)
+                .setDepth(3)
                 .setOrigin(0, 1)
                 .setInteractive({ draggable: true })
                 .setData('targetX', piece.x)
@@ -312,7 +313,7 @@ export default class CultureScene extends Phaser.Scene {
 
         // 添加拖拽事件处理
         this.input.on('dragstart', (pointer, gameObject) => {
-            gameObject.setDepth(3);  // 拖拽时提升层级
+            gameObject.setDepth(4);  // 拖拽时提升层级
             gameObject.setAlpha(0.8);  // 拖拽时略微透明
         });
 
@@ -337,7 +338,7 @@ export default class CultureScene extends Phaser.Scene {
 
         this.input.on('dragend', (pointer, gameObject) => {
             gameObject.setAlpha(1);  // 恢复完全不透明
-            gameObject.setDepth(2);  // 恢复原来的层级
+            gameObject.setDepth(3);  // 恢复原来的层级
 
             const distance = Phaser.Math.Distance.Between(
                 gameObject.x, gameObject.y,
@@ -610,7 +611,7 @@ export default class CultureScene extends Phaser.Scene {
 
         // 添加完成时间文本
         const timeText = this.add.text(this.scale.width/2, this.scale.height * 0.75, 
-            `完成时间: ${elapsed}秒`, {
+            `Time: ${elapsed}s`, {
             fontSize: '24px',
             fill: '#FFFFFF'
         })
@@ -709,7 +710,7 @@ export default class CultureScene extends Phaser.Scene {
         if (this.puzzlePieces) {
             this.puzzlePieces.forEach(piece => {
                 piece.setScale(baseScale)
-                    .setDepth(2);
+                    .setDepth(3);
             });
         }
     }

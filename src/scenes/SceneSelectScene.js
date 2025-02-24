@@ -76,64 +76,56 @@ export default class SceneSelectScene extends Phaser.Scene {
             const card = this.add.graphics();
 
             // 增强3D效果的阴影
-            card.fillStyle(0x000000, 0.2);
-            for(let i = 0; i < 5; i++) {
-                card.fillRoundedRect(
-                    -cardWidth/2 + 15 - i, 
-                    -cardHeight/2 + 15 - i, 
-                    cardWidth + i * 2, 
-                    cardHeight + i * 2,
-                    20
-                );
-            }
+            // card.fillStyle(0x000000, 0.2);
+            // for(let i = 0; i < 5; i++) {
+            //     card.fillRoundedRect(
+            //         -cardWidth/2 + 15 - i, 
+            //         -cardHeight/2 + 15 - i, 
+            //         cardWidth + i * 2, 
+            //         cardHeight + i * 2,
+            //         20
+            //     );
+            // }
 
             // 3D效果 - 右侧边缘
-            for(let i = 0; i < 8; i++) {
-                card.fillStyle(0xC2B186, 0.3 - i * 0.03);
-                card.fillRoundedRect(
-                    cardWidth/2 - 8,
-                    -cardHeight/2 + i * 2,
-                    8,
-                    cardHeight,
-                    { tl: 0, tr: 20, br: 20, bl: 0 }
-                );
-            }
+            // for(let i = 0; i < 8; i++) {
+            //     card.fillStyle(0xC2B186, 0.3 - i * 0.03);
+            //     card.fillRoundedRect(
+            //         cardWidth/2 - 8,
+            //         -cardHeight/2 + i * 2,
+            //         8,
+            //         cardHeight,
+            //         { tl: 0, tr: 20, br: 20, bl: 0 }
+            //     );
+            // }
 
-            // 3D效果 - 底部边缘
-            for(let i = 0; i < 8; i++) {
-                card.fillStyle(0xC2B186, 0.3 - i * 0.03);
-                card.fillRoundedRect(
-                    -cardWidth/2,
-                    cardHeight/2 - 8,
-                    cardWidth,
-                    8,
-                    { tl: 0, tr: 0, br: 20, bl: 20 }
-                );
-            }
+            // // 3D效果 - 底部边缘
+            // for(let i = 0; i < 8; i++) {
+            //     card.fillStyle(0xC2B186, 0.3 - i * 0.03);
+            //     card.fillRoundedRect(
+            //         -cardWidth/2,
+            //         cardHeight/2 - 8,
+            //         cardWidth,
+            //         8,
+            //         { tl: 0, tr: 0, br: 20, bl: 20 }
+            //     );
+            // }
 
             // 主卡片背景（使用渐变和圆角）
-            const colors = [0xE6D5AC, 0xD4C398, 0xC2B186];
+            // const colors = [0xE6D5AC, 0xD4C398, 0xC2B186];
 
-            colors.forEach((color, i) => {
-                card.fillStyle(color, 0.2 - i * 0.1);
-                card.fillRoundedRect(
-                    -cardWidth/2,
-                    -cardHeight/2,
-                    cardWidth,
-                    cardHeight,
-                    20
-                );
-            });
+            // colors.forEach((color, i) => {
+            //     card.fillStyle(color, 0.2 - i * 0.1);
+            //     card.fillRoundedRect(
+            //         -cardWidth/2,
+            //         -cardHeight/2,
+            //         cardWidth,
+            //         cardHeight,
+            //         20
+            //     );
+            // });
 
-            // 添加装饰性边框
-            card.lineStyle(2, 0xC2B186, 0.6);
-            card.strokeRoundedRect(
-                -cardWidth/2 + 5,
-                -cardHeight/2 + 5,
-                cardWidth - 10,
-                cardHeight - 10,
-                18
-            );
+           
 
             // 增强光泽效果
             const gradientHeight = cardHeight * 0.4;
@@ -150,16 +142,16 @@ export default class SceneSelectScene extends Phaser.Scene {
             }
 
             // 预览图（调整位置和大小）
-            const preview = this.add.image(0, -cardHeight * 0.15, scene.key)
-                .setDisplaySize(cardWidth * 0.9, cardHeight * 0.9);
+            const preview = this.add.image(0, -cardHeight * 0.02, scene.key)
+                .setDisplaySize(cardWidth * 1, cardHeight * 1.2);
 
             // 标题（更新样式）
-            const title = this.add.text(0, cardHeight * 0.3, scene.title, {
-                fontSize: width * 0.015+'px',
+            const title = this.add.text(0, cardHeight * 0.5, scene.title, {
+                fontSize: width * 0.013+'px',
                 fontWeight: 'bold',
                 fill: '#000000',
                 backgroundColor: '#ffffff90',
-                padding: { x: 20, y: 10 },
+                padding: { x: 2, y: 2 },
                 borderRadius: 5
             }).setOrigin(0.5);
 
@@ -218,14 +210,15 @@ export default class SceneSelectScene extends Phaser.Scene {
         });
 
         // 添加返回按钮
-        const backButton = this.add.image(80, 40, 'back')
-            .setScale(0.6)
+    
+        const backButton = this.add.image(width * 0.05, height * 0.1, 'back')
+            .setScale(0.5)
             .setDepth(2)
             .setInteractive()
             .on('pointerover', () => {
                 this.tweens.add({
                     targets: backButton,
-                    scale: 0.7,
+                    scale: 0.6,
                     duration: 200
                 });
             })
