@@ -12,7 +12,7 @@ cat > package.json << 'PACKAGE'
 {
   "name": "rural-revival-game",
   "version": "1.0.0",
-  "description": "乡村振兴主题游戏",
+  "description": "countryside",
   "main": "src/config.js",
   "scripts": {
     "clean": "rm -rf .cache dist",

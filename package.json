@@ -1,16 +1,17 @@
 {
   "name": "rural-revival-game",
   "version": "1.0.0",
-  "description": "乡村振兴主题游戏",
+  "description": "Countryside",
   "main": "src/config.js",
   "scripts": {
-    "start": "http-server -p 8080",
+    "start": "http-server ./dist -p 8080 --cors",
     "clean": "rm -rf .cache dist",
-    "start:dev": "live-server --port=3000 --host=localhost --no-browser --mount=/src:./src",
-    "build": "parcel build index.html"
+    "start:dev": "live-server --port=3000 --host=localhost --no-browser",
+    "build": "parcel build index.html --public-url /rural-revival-game/dist/"
   },
   "dependencies": {
-    "phaser": "^3.70.0"
+    "phaser": "^3.70.0",
+    "http-server": "^14.1.1"
   },
   "devDependencies": {
     "live-server": "^1.2.2",
