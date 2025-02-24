@@ -4,16 +4,24 @@
   "description": "Countryside",
   "main": "src/config.js",
   "scripts": {
-    "start": "http-server ./dist -p 8080 --cors",
+    "start": "live-server --port=8080 --host=0.0.0.0 --no-browser",
+    "start:dev": "live-server --port=3000 --host=0.0.0.0 --no-browser",
     "clean": "rm -rf .cache dist",
-    "start:dev": "live-server --port=3000 --host=localhost --no-browser",
-    "build": "parcel build index.html --public-url /rural-revival-game/dist/"
+    "build": "parcel build index.html --no-source-maps --public-url ./"
   },
   "dependencies": {
     "phaser": "^3.70.0",
-    "http-server": "^14.1.1"
+    "http-server": "^14.1.1",
+    "@babel/core": "^7.12.0",
+    "@babel/preset-env": "^7.12.0",
+    "live-server": "^1.2.2",
+    "parcel-bundler": "^1.12.5"
   },
   "devDependencies": {
+    "phaser": "^3.70.0",
+    "http-server": "^14.1.1",
+    "@babel/core": "^7.12.0",
+    "@babel/preset-env": "^7.12.0",
     "live-server": "^1.2.2",
     "parcel-bundler": "^1.12.5"
   },
