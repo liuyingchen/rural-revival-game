@@ -136,7 +136,7 @@ export default class CharacterSelectScene extends Phaser.Scene {
                 fontSize: '28px',
                 fontFamily: 'Arial',
                 fontWeight: 'bold',
-                fill: '#444444',
+                fill: '#000000',
                 padding: { x: 20, y: 5 },  // 减小垂直内边距
                 align: 'center'
             };

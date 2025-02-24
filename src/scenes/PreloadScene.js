@@ -9,6 +9,7 @@ export default class PreloadScene extends Phaser.Scene {
         
         // 加载背景图和音频
         this.load.image('preload-bg', 'images/common/preload-bg.png');
+        this.load.image('start-btn', 'images/common/start.png');  // 加载开始按钮图片
         this.load.audio('bgm', 'audio/bgm.mp3');
         this.load.audio('gamestart', 'audio/gamestart.mp3');
     }
@@ -63,58 +64,51 @@ export default class PreloadScene extends Phaser.Scene {
             }));
         });
 
-        // 添加开始游戏按钮
-        const startButton = this.add.text(width/2, height * 0.8, '点击开始游戏', {
-            fontSize: '48px',
-            fontStyle: 'bold',
-            fill: '#ffffff',
-            backgroundColor: '#000000',
-            padding: { x: 30, y: 15 },
-            shadow: {
-                offsetX: 2,
-                offsetY: 2,
-                color: '#000000',
-                blur: 2,
-                stroke: true,
-                fill: true
-            }
-        })
-        .setOrigin(0.5)
-        .setInteractive({ useHandCursor: true })
-        .setDepth(1);
+        // 创建按钮容器
+        const buttonContainer = this.add.container(width/2, height * 0.8);
 
-        // 添加按钮交互效果
+        // 添加按钮图片
+        const startButton = this.add.image(0, 0, 'start-btn')
+            .setScale(0.8)
+            .setInteractive();
+
+        // 添加文字
+        const startText = this.add.text(0, 0, ' START', {
+            fontSize: '36px',
+            fontStyle: 'bold',
+            fill: '#000000',
+        }).setOrigin(0.5);
+
+        // 将图片和文字添加到容器
+        buttonContainer.add([startButton, startText]);
+        buttonContainer.setDepth(1);
+
+        // 修改悬停效果
         startButton.on('pointerover', () => {
-            startButton.setScale(1.1);
-            startButton.setStyle({ backgroundColor: '#333333' });
+            buttonContainer.setScale(1.05);  // 整体放大
         });
 
         startButton.on('pointerout', () => {
-            startButton.setScale(1);
-            startButton.setStyle({ backgroundColor: '#000000' });
+            buttonContainer.setScale(1);     // 恢复原始大小
         });
 
+        // 点击效果
         startButton.on('pointerdown', () => {
-            // 禁用按钮防止重复点击
             startButton.disableInteractive();
             
-            // 停止背景音乐
             this.bgm.stop();
             
-            // 播放开始游戏音效
             const gamestart = this.sound.add('gamestart', { volume: 0.8 });
             gamestart.play();
             
-            // 添加过渡动画
             this.tweens.add({
-                targets: startButton,
+                targets: buttonContainer,
                 alpha: 0,
-                scale: 0.8,
+                scale: 0.7,
                 duration: 300,
                 ease: 'Power2'
             });
             
-            // 等待音效播放完毕后切换场景
             gamestart.once('complete', () => {
                 this.cameras.main.fadeOut(500);
                 this.cameras.main.once('camerafadeoutcomplete', () => {

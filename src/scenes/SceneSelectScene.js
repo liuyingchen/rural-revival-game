@@ -72,61 +72,92 @@ export default class SceneSelectScene extends Phaser.Scene {
         scenes.forEach((scene, index) => {
             const container = this.add.container(startX + spacing * index, startY);
 
-            // 创建更强的3D效果
+            // 创建卡片效果
             const card = this.add.graphics();
-            
-            // 最底层阴影（营造悬浮感）
+
+            // 增强3D效果的阴影
             card.fillStyle(0x000000, 0.2);
-            card.fillRect(-cardWidth/2 + 15, -cardHeight/2 + 15, cardWidth, cardHeight);
-
-            // 侧面（加深的3D效果）
-            // 右侧面
-            card.fillStyle(0xcccccc);
-            card.fillRect(cardWidth/2, -cardHeight/2, 20, cardHeight);
-            // 渐变效果
             for(let i = 0; i < 5; i++) {
-                card.fillStyle(0xdddddd, 0.8 - i * 0.15);
-                card.fillRect(cardWidth/2 + i * 4, -cardHeight/2, 4, cardHeight);
-            }
-
-            // 底部面
-            card.fillStyle(0xdddddd);
-            card.fillRect(-cardWidth/2, cardHeight/2, cardWidth, 20);
-            // 渐变效果
-            for(let i = 0; i < 5; i++) {
-                card.fillStyle(0xeeeeee, 0.8 - i * 0.15);
-                card.fillRect(-cardWidth/2, cardHeight/2 + i * 4, cardWidth, 4);
-            }
-
-            // 主面（使用多层矩形模拟渐变）
-            // 基础白色背景
-            card.fillStyle(0xffffff);
-            card.fillRect(-cardWidth/2, -cardHeight/2, cardWidth, cardHeight);
-            
-            // 使用半透明层模拟渐变
-            for(let i = 0; i < 10; i++) {
-                card.fillStyle(0xf0f0f0, i * 0.03);
-                card.fillRect(
-                    -cardWidth/2 + (i * cardWidth/10),
-                    -cardHeight/2 + (i * cardHeight/10),
-                    cardWidth - (i * cardWidth/10),
-                    cardHeight - (i * cardHeight/10)
+                card.fillRoundedRect(
+                    -cardWidth/2 + 15 - i, 
+                    -cardHeight/2 + 15 - i, 
+                    cardWidth + i * 2, 
+                    cardHeight + i * 2,
+                    20
                 );
             }
-            
-            // 卡片边框
-            card.lineStyle(2, 0xaaaaaa);
-            card.strokeRect(-cardWidth/2, -cardHeight/2, cardWidth, cardHeight);
+
+            // 3D效果 - 右侧边缘
+            for(let i = 0; i < 8; i++) {
+                card.fillStyle(0xC2B186, 0.3 - i * 0.03);
+                card.fillRoundedRect(
+                    cardWidth/2 - 8,
+                    -cardHeight/2 + i * 2,
+                    8,
+                    cardHeight,
+                    { tl: 0, tr: 20, br: 20, bl: 0 }
+                );
+            }
+
+            // 3D效果 - 底部边缘
+            for(let i = 0; i < 8; i++) {
+                card.fillStyle(0xC2B186, 0.3 - i * 0.03);
+                card.fillRoundedRect(
+                    -cardWidth/2,
+                    cardHeight/2 - 8,
+                    cardWidth,
+                    8,
+                    { tl: 0, tr: 0, br: 20, bl: 20 }
+                );
+            }
+
+            // 主卡片背景（使用渐变和圆角）
+            const colors = [0xE6D5AC, 0xD4C398, 0xC2B186];
+
+            colors.forEach((color, i) => {
+                card.fillStyle(color, 0.2 - i * 0.1);
+                card.fillRoundedRect(
+                    -cardWidth/2,
+                    -cardHeight/2,
+                    cardWidth,
+                    cardHeight,
+                    20
+                );
+            });
+
+            // 添加装饰性边框
+            card.lineStyle(2, 0xC2B186, 0.6);
+            card.strokeRoundedRect(
+                -cardWidth/2 + 5,
+                -cardHeight/2 + 5,
+                cardWidth - 10,
+                cardHeight - 10,
+                18
+            );
+
+            // 增强光泽效果
+            const gradientHeight = cardHeight * 0.4;
+            for(let i = 0; i < gradientHeight; i++) {
+                const alpha = 0.2 * (1 - i/gradientHeight);
+                card.fillStyle(0xFFFFFF, alpha);
+                card.fillRoundedRect(
+                    -cardWidth/2 + 10,
+                    -cardHeight/2 + i,
+                    cardWidth - 20,
+                    2,
+                    { tl: 16, tr: 16, br: 0, bl: 0 }
+                );
+            }
 
             // 预览图（调整位置和大小）
             const preview = this.add.image(0, -cardHeight * 0.15, scene.key)
-                .setDisplaySize(cardWidth * 0.85, cardHeight * 0.6);
+                .setDisplaySize(cardWidth * 0.9, cardHeight * 0.9);
 
             // 标题（更新样式）
             const title = this.add.text(0, cardHeight * 0.3, scene.title, {
-                fontSize: '28px',
+                fontSize: width * 0.015+'px',
                 fontWeight: 'bold',
-                fill: '#333333',
+                fill: '#000000',
                 backgroundColor: '#ffffff90',
                 padding: { x: 20, y: 10 },
                 borderRadius: 5
