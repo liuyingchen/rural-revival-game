@@ -777,38 +777,27 @@ export default class AgricultureScene extends Phaser.Scene {
             );
         textContainer.setMask(new Phaser.Display.Masks.GeometryMask(this, textMask));
 
-        // 修改文本内容
+        // 替换文本内容
         const allTextLines = [
-            "Dear Pakistani friend, welcome to China's ancient house of rural heritage!",
-            "Repair an antique chair using the sunmao joinery, a technique behind architectural marvels like the Forbidden City.",
-            "Place the wooden parts correctly to preserve this craft. Ready to be a cultural guardian?"
+            "Dear Pakistani friend, welcome to China's Modern Agricultural Base!",
+            "Operate a Chinese agricultural drone, tap targets on screen, and complete precision tasks across 300 acres.",
+            "Experience how technology drives sustainable farming.",
+            "Let's cultivate tomorrow's fields today!"
         ];
 
-        // 打字机效果
-        const typewriterEffect = (textObject, fullText) => {
-            return new Promise((resolve) => {
-                let currentText = '';
-                let currentIndex = 0;
-                
-                const timer = this.time.addEvent({
-                    delay: 20,
-                    callback: () => {
-                        if (currentIndex < fullText.length) {
-                            currentText += fullText[currentIndex];
-                            textObject.setText(currentText);
-                            currentIndex++;
-                        } else {
-                            timer.destroy();
-                            setTimeout(resolve, 100);
-                        }
-                    },
-                    loop: true
-                });
-            });
-        };
+        // 添加一个标志来控制打字机效果
+        let shouldContinueTyping = true;
 
-        // 添加一个标志来追踪是否正在显示文本
-        let isDisplayingText = true;
+        // 修改打字机效果函数
+        async function typewriterEffect(textObj, fullText) {
+            for (let i = 0; i <= fullText.length; i++) {
+                // 如果标志为false，立即中断
+                if (!shouldContinueTyping) return;
+                
+                textObj.setText(fullText.substring(0, i));
+                await new Promise(resolve => setTimeout(resolve, 30));
+            }
+        }
 
         // 方案1: 在 displayText 函数中维护文本对象数组
         async function displayText() {
@@ -849,7 +838,7 @@ export default class AgricultureScene extends Phaser.Scene {
         let textObjects = [];
         displayText.call(this).then(objects => {
             textObjects = objects;
-            isDisplayingText = false;
+            shouldContinueTyping = false;
         });
 
         // 创建并播放背景音乐
@@ -865,43 +854,51 @@ export default class AgricultureScene extends Phaser.Scene {
 
         // 点击任意位置关闭弹窗并开始游戏
         this.input.once('pointerdown', () => {
+            // 设置标志为false，中断打字机效果
+            shouldContinueTyping = false;
+            
             // 停止所有计时器和动画
-            this.time.removeAllEvents();
-            this.tweens.killAll();
+            //this.time.removeAllEvents();
+            //this.tweens.killAll();
 
             // 清理所有对象
             messageBox.destroy();
             overlay.destroy();
             
-            // 如果正在显示文本,清理所有文本相关的对象
-            if (isDisplayingText) {
-                // 清理在textContainer中的文本对象
-                if (textContainer) {
-                    textContainer.list.forEach(text => {
-                        if (text instanceof Phaser.GameObjects.Text) {
-                            text.destroy();
-                        }
-                    });
-                }
-                // 清理已经创建但还未加入数组的文本
+            // 保存需要保留的UI文本引用
+            const timeTextRef = this.timeText;
+            const scoreTextRef = this.scoreText;
+            const progressTextRef = this.progressText;
+            
+            // 查找并销毁所有包含对话文本内容的文本对象
+            allTextLines.forEach(line => {
                 this.children.list.forEach(child => {
-                    if (child instanceof Phaser.GameObjects.Text && 
-                        child !== this.timeText && // 排除时间显示文本
-                        child.x >= this.scale.width/2 - boxWidth/2 && // 检查文本是否在对话框范围内
-                        child.x <= this.scale.width/2 + boxWidth/2 &&
-                        child.y >= boxY - boxHeight/2 &&
-                        child.y <= boxY + boxHeight/2) {
-                        child.destroy();
+                    if (child instanceof Phaser.GameObjects.Text) {
+                        // 检查文本是否包含对话行的任何部分
+                        if (child.text && 
+                            (child.text.includes(line) || line.includes(child.text)) && 
+                            child !== timeTextRef && 
+                            child !== scoreTextRef && 
+                            child !== progressTextRef) {
+                            child.destroy();
+                        }
                     }
                 });
-            } else {
-                // 使用已完成的文本对象数组清理
-                if (textObjects) {
-                    textObjects.forEach(text => {
-                        if (text && text.scene) text.destroy();
-                    });
+            });
+            
+            // 额外清理：销毁所有在特定Y坐标范围内的文本
+            // 这是基于对话文本通常显示在屏幕中间的假设
+            const screenHeight = this.scale.height;
+            this.children.list.forEach(child => {
+                if (child instanceof Phaser.GameObjects.Text && 
+                    child.y > screenHeight * 0.3 && 
+                    child.y < screenHeight * 0.8 && 
+                    child !== timeTextRef && 
+                    child !== scoreTextRef && 
+                    child !== progressTextRef) {
+                    child.destroy();
                 }
-            }
+            });
             
             // 清理文本容器和遮罩
             if (textContainer) {
@@ -914,7 +911,7 @@ export default class AgricultureScene extends Phaser.Scene {
             // 重置并初始化游戏状态
             this.isPlaying = true;
             this.isAirplaneFlying = false;
-            this.isFirstFlight = true;  // 确保这个状态被正确设置
+            this.isFirstFlight = true;
             this.clickCount = 0;
             this.fieldProgress = 0;
             this.updateFieldMask();
