@@ -427,6 +427,7 @@ export default class EcommerceScene extends Phaser.Scene {
         
         // 将箱子添加到移动箱子列表
         this.movingBoxes.push(box);
+        this.currentBox = box;
         
         // 箱子沿传送带移动 - 第一段
         this.tweens.add({
@@ -508,7 +509,18 @@ export default class EcommerceScene extends Phaser.Scene {
             return currentDistance < closestDistance ? current : closest;
         }, colorMatchingBoxes[0]);
         
-        console.log(`选择的${fistColor}箱子: ID=${targetBox.id}, 位置x=${targetBox.x}, y=${targetBox.y}`);
+        // 计算最近箱子与拳头的距离
+        const distance = Math.abs(targetBox.x - fist.x);
+        console.log(`选择的${fistColor}箱子: ID=${targetBox.id}, 位置x=${targetBox.x}, y=${targetBox.y}, 距离=${distance}`);
+        
+        // 设置最大有效距离（可以根据游戏需要调整）
+        const maxDistance = 100; // 像素
+        
+        // 检查距离是否在有效范围内
+        if (distance > maxDistance) {
+            console.log(`箱子距离(${distance})超出有效范围(${maxDistance})，无法分类`);
+            return;
+        }
         
         // 处理选中的箱子
         const box = targetBox;
