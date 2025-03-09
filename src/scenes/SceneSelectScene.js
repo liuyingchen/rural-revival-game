@@ -30,6 +30,7 @@ export default class SceneSelectScene extends Phaser.Scene {
         this.load.image('back', 'images/common/back.png');
         // 加载点击音效
         this.load.audio('click', 'audio/click.mp3');
+        this.load.audio('bgm', 'audio/bgm.mp3');
     }
 
     create() {
@@ -43,6 +44,9 @@ export default class SceneSelectScene extends Phaser.Scene {
 
         // 创建点击音效
         this.clickSound = this.sound.add('click', { volume: 0.8 });
+
+        // 检查并获取背景音乐
+        this.bgm = this.sound.get('bgm');
 
         // 添加选中的角色
         const characterType = window.gameState.character || 'female';
@@ -184,6 +188,9 @@ export default class SceneSelectScene extends Phaser.Scene {
             container.on('pointerdown', () => {
                 // 播放点击音效
                 this.clickSound.play();
+                if (this.bgm) {
+                    this.bgm.stop();
+                }
                 
                 // 点击动画
                 this.tweens.add({
@@ -253,6 +260,9 @@ export default class SceneSelectScene extends Phaser.Scene {
     shutdown() {
         if (this.clickSound) {
             this.clickSound.destroy();
+        }
+        if (this.bgm) {
+            this.bgm.stop();
         }
     }
 } 

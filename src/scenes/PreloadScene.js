@@ -124,7 +124,7 @@ export default class PreloadScene extends Phaser.Scene {
         startButton.on('pointerdown', () => {
             startButton.disableInteractive();
             
-            this.bgm.stop();
+            this.bgm.play();
             
             const gamestart = this.sound.add('gamestart', { volume: 0.8 });
             gamestart.play();
