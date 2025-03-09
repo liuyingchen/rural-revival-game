@@ -29,9 +29,9 @@ export default class EcommerceScene extends Phaser.Scene {
         this.isPackingAnimating = false;  // 添加角色动画状态标记
         // 添加奖牌时间标准
         this.medalTimes = {
-            gold: 30,    // 30秒内完成获得金牌
-            silver: 45,  // 45秒内完成获得银牌
-            bronze: 60   // 60秒内完成获得铜牌
+            gold: 50,    // 30秒内完成获得金牌
+            silver: 60,  // 45秒内完成获得银牌
+            bronze: 100   // 60秒内完成获得铜牌
         };
 
         // 初始化箱子管理
@@ -130,7 +130,7 @@ export default class EcommerceScene extends Phaser.Scene {
         ).setScale(this.scale.height * 0.0005 * 0.4);
         
         this.yellowFist = this.add.sprite(
-            this.cameras.main.width * 0.8,
+            this.cameras.main.width * 0.85,
             this.cameras.main.height * 0.3,
             'yellow'
         ).setScale(this.scale.height * 0.0005 * 0.4);
@@ -202,14 +202,14 @@ export default class EcommerceScene extends Phaser.Scene {
         this.redSortingArea = this.add.rectangle(
             this.cameras.main.width * 0.7, 
             this.cameras.main.height * 0.85, 
-            200, 100, 
+            220, 150, 
             0xff0000, 0.3
         ).setOrigin(0.5);
         
         this.yellowSortingArea = this.add.rectangle(
             this.cameras.main.width * 0.85, 
             this.cameras.main.height * 0.85, 
-            200, 100, 
+            220, 150, 
             0xffff00, 0.3
         ).setOrigin(0.5);
         
@@ -247,6 +247,7 @@ export default class EcommerceScene extends Phaser.Scene {
         const boxWidth = width * 0.8;
         const boxHeight = height * 0.25;
         const boxY = height * 0.75;
+        const boxX = width * 0.55;
 
         // 创建弹窗背景
         const messageBox = this.add.graphics()
@@ -254,14 +255,14 @@ export default class EcommerceScene extends Phaser.Scene {
         messageBox.fillStyle(0xE6D5AC, 0.95);
         messageBox.lineStyle(4, 0x8B4513);
         messageBox.fillRoundedRect(
-            width/2 - boxWidth/2,
+            boxX - boxWidth/2,
             boxY - boxHeight/2,
             boxWidth,
             boxHeight,
             20
         );
         messageBox.strokeRoundedRect(
-            width/2 - boxWidth/2,
+            boxX - boxWidth/2,
             boxY - boxHeight/2,
             boxWidth,
             boxHeight,
@@ -273,7 +274,7 @@ export default class EcommerceScene extends Phaser.Scene {
         const textMask = this.add.graphics()
             .fillStyle(0xffffff)
             .fillRect(
-                width/2 - boxWidth/2,
+                boxX - boxWidth/2,
                 boxY - boxHeight/2,
                 boxWidth,
                 boxHeight
@@ -289,7 +290,7 @@ export default class EcommerceScene extends Phaser.Scene {
         // 创建文本对象
         for (let i = 0; i < maxLines; i++) {
             const text = this.add.text(
-                width/2 - boxWidth/2 + 40,
+                boxX - boxWidth/2 + 40,
                 startY + i * lineSpacing,
                 '',
                 {
@@ -341,7 +342,7 @@ export default class EcommerceScene extends Phaser.Scene {
         // 欢迎文本内容
         const allTextLines = [
             "Dear Pakistani friend, welcome to the village express station!",
-            "As logistics commander, click to pack parcels marked for cities.",
+            "As logistics commander, click to sort parcels marked for cities.",
             "Each package you seal helps better the urban developent."
         ];
 
@@ -417,7 +418,7 @@ export default class EcommerceScene extends Phaser.Scene {
         
         // 创建新箱子
         const box = this.add.image(startX, startY, boxTexture)
-            .setScale(this.scale.height * 0.0004 * 0.3);
+            .setScale(this.scale.height * 0.0004 * 0.4);
         
         // 设置箱子属性
         box.boxType = boxType;
@@ -514,7 +515,7 @@ export default class EcommerceScene extends Phaser.Scene {
         console.log(`选择的${fistColor}箱子: ID=${targetBox.id}, 位置x=${targetBox.x}, y=${targetBox.y}, 距离=${distance}`);
         
         // 设置最大有效距离（可以根据游戏需要调整）
-        const maxDistance = 100; // 像素
+        const maxDistance = 80; // 像素
         
         // 检查距离是否在有效范围内
         if (distance > maxDistance) {
@@ -526,16 +527,17 @@ export default class EcommerceScene extends Phaser.Scene {
         const box = targetBox;
         
         // 播放分类音效
-        this.sound.play('package-sound', { volume: 0.8 });
+        this.sound.play('package-sound', { volume: 0.9 });
         
         // 立即停止所有与该箱子相关的动画
         this.tweens.killTweensOf(box);
         
-        // 确保箱子完全消失
-        box.setVisible(false);
-        box.setActive(false);
+        console.log(`开始箱子下落动画，初始位置: x=${box.x}, y=${box.y}`);
         
-        // 从移动箱子列表中移除
+        // 设置箱子下落距离
+        const fallDistance = 300; // 可以根据需要调整
+        
+        // 从移动箱子列表中移除，但不要立即销毁
         const index = this.movingBoxes.indexOf(box);
         if (index > -1) {
             this.movingBoxes.splice(index, 1);
@@ -543,6 +545,39 @@ export default class EcommerceScene extends Phaser.Scene {
         } else {
             console.log(`警告：箱子ID: ${box.id} 不在移动列表中！`);
         }
+        
+        // 确保箱子在最上层显示
+        box.setDepth(500);
+
+        // 创建一个新的箱子对象，专门用于动画
+const animBox = this.add.image(box.x, box.y, box.texture.key)
+.setScale(box.scaleX, box.scaleY)
+.setDepth(500);
+
+// 可以立即隐藏原始箱子
+box.setVisible(false);
+        
+        // 创建箱子被击打的动画
+        this.tweens.add({
+            targets: animBox,
+            y: box.y + fallDistance, // 向下移动
+            alpha: 0,               // 逐渐透明
+            scale: box.scale * 0.8, // 稍微缩小
+            duration: 800,          // 增加动画持续时间，使其更明显
+            ease: 'Power2',         // 缓动函数
+            onStart: () => {
+                console.log(`箱子下落动画开始，目标位置: y=${box.y + fallDistance}`);
+            },
+            onUpdate: () => {
+                console.log(`箱子当前位置: y=${box.y}, alpha=${box.alpha}`);
+            },
+            onComplete: () => {
+                // 动画完成后销毁箱子
+                console.log(`箱子下落动画完成，最终位置: y=${box.y}`);
+                animBox.destroy();
+                console.log(`箱子ID: ${box.id} 已被销毁`);
+            }
+        });
         
         // 增加计数
         this.boxCount++;
@@ -587,6 +622,14 @@ export default class EcommerceScene extends Phaser.Scene {
         if (this.boxTimer) {
             this.boxTimer.remove();
         }
+        // 隐藏或销毁拳头
+    if (this.redFist) {
+        this.redFist.setVisible(false);
+    }
+    
+    if (this.yellowFist) {
+        this.yellowFist.setVisible(false);
+    }
         
         // 清除所有移动中的箱子
         this.movingBoxes.forEach(box => box.destroy());
