@@ -299,8 +299,8 @@ export default class CultureScene extends Phaser.Scene {
         // 创建拼图块，全部堆叠在右下角
         this.puzzlePieces = positions.map((piece, index) => {
             // 所有拼图块都在右下角区域，稍微错开一点位置
-            const randomX = Phaser.Math.Between(width * 0.7, width * 0.75);
-            const randomY = Phaser.Math.Between(height * 0.65, height * 0.7);
+            const randomX = Phaser.Math.Between(width * 0.65, width * 0.8);
+            const randomY = Phaser.Math.Between(height * 0.6, height * 0.75);
 
             return this.add.image(randomX, randomY, piece.key)
                 .setScale(baseScale)
